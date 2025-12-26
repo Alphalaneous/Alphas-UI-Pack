@@ -1,0 +1,35 @@
+{
+	"geode": "4.10.0",
+	"gd": {
+		"win": "2.2074",
+		"android": "2.2074",
+		"mac": "2.2074",
+		"ios": "2.2074"
+	},
+	"id": "alphalaneous.alphas-ui-pack",
+	"name": "Alpha's UI Pack",
+	"version": "v1.0.0-alpha.1",
+	"developer": "Alphalaneous",
+	"description": "Adds an APIs for new UI elements",
+	"early-load": true,
+	"dependencies": {
+		"geode.devtools": {
+			"version": ">=v1.10.0",
+            "importance": "suggested"
+		}
+	},
+	"api": {
+        "include": [
+            "include/*.hpp",
+            "include/touch/*.hpp",
+            "include/nodes/*.hpp",
+            "include/nodes/scroll/*.hpp",
+            "include/nodes/scroll/elements/*.hpp"
+        ]
+    },
+	"resources": {
+		"sprites": [
+			"resources/*.png"
+		]
+	}
+}
