@@ -1,17 +1,18 @@
 #import <Cocoa/Cocoa.h>
 #include <Geode/Geode.hpp>
-#include "CursorManager.hpp"
+#include "API.hpp"
 
 using namespace geode::prelude;
+using namespace alpha::prelude;
 
 void CursorManager::init() {
-    m_cursors[Cursor::ARROW]   = [NSCursor arrowCursor];
-    m_cursors[Cursor::TEXT]    = [NSCursor IBeamCursor];
-    m_cursors[Cursor::CROSS]   = [NSCursor crosshairCursor];
-    m_cursors[Cursor::HAND]    = [NSCursor pointingHandCursor];
-    m_cursors[Cursor::NO]      = [NSCursor operationNotAllowedCursor];
-    m_cursors[Cursor::SIZE_WE] = [NSCursor resizeLeftRightCursor];
-    m_cursors[Cursor::SIZE_NS] = [NSCursor resizeUpDownCursor];
+    m_cursors[Cursor::ARROW]       = [NSCursor arrowCursor];
+    m_cursors[Cursor::TEXT]        = [NSCursor IBeamCursor];
+    m_cursors[Cursor::CROSS]       = [NSCursor crosshairCursor];
+    m_cursors[Cursor::HAND]        = [NSCursor pointingHandCursor];
+    m_cursors[Cursor::NOT_ALLOWED] = [NSCursor operationNotAllowedCursor];
+    m_cursors[Cursor::SIZE_WE]     = [NSCursor resizeLeftRightCursor];
+    m_cursors[Cursor::SIZE_NS]     = [NSCursor resizeUpDownCursor];
 }
 
 void CursorManager::setCursor(Cursor cursor) {

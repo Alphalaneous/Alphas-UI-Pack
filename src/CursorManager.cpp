@@ -1,8 +1,8 @@
 #include <Geode/Geode.hpp>
-#include "CursorManager.hpp"
-#include "Utils.hpp"
+#include "API.hpp"
 
 using namespace geode::prelude;
+using namespace alpha::prelude;
 
 CursorManager* CursorManager::get() {
     static CursorManager instance;
@@ -43,16 +43,16 @@ void CursorManager::setWndProc() {
 }
 
 void CursorManager::init() {
-    m_cursors[Cursor::ARROW]     = LoadCursor(NULL, IDC_ARROW);
-    m_cursors[Cursor::TEXT]      = LoadCursor(NULL, IDC_IBEAM);
-    m_cursors[Cursor::CROSS]     = LoadCursor(NULL, IDC_CROSS);
-    m_cursors[Cursor::SIZE]      = LoadCursor(NULL, IDC_SIZEALL);
-    m_cursors[Cursor::SIZE_NWSE] = LoadCursor(NULL, IDC_SIZENWSE);
-    m_cursors[Cursor::SIZE_NESW] = LoadCursor(NULL, IDC_SIZENESW);
-    m_cursors[Cursor::SIZE_WE]   = LoadCursor(NULL, IDC_SIZEWE);
-    m_cursors[Cursor::SIZE_NS]   = LoadCursor(NULL, IDC_SIZENS);
-    m_cursors[Cursor::NO]        = LoadCursor(NULL, IDC_NO);
-    m_cursors[Cursor::HAND]      = LoadCursor(NULL, IDC_HAND);
+    m_cursors[Cursor::ARROW]       = LoadCursor(NULL, IDC_ARROW);
+    m_cursors[Cursor::TEXT]        = LoadCursor(NULL, IDC_IBEAM);
+    m_cursors[Cursor::CROSS]       = LoadCursor(NULL, IDC_CROSS);
+    m_cursors[Cursor::SIZE]        = LoadCursor(NULL, IDC_SIZEALL);
+    m_cursors[Cursor::SIZE_NWSE]   = LoadCursor(NULL, IDC_SIZENWSE);
+    m_cursors[Cursor::SIZE_NESW]   = LoadCursor(NULL, IDC_SIZENESW);
+    m_cursors[Cursor::SIZE_WE]     = LoadCursor(NULL, IDC_SIZEWE);
+    m_cursors[Cursor::SIZE_NS]     = LoadCursor(NULL, IDC_SIZENS);
+    m_cursors[Cursor::NOT_ALLOWED] = LoadCursor(NULL, IDC_NO);
+    m_cursors[Cursor::HAND]        = LoadCursor(NULL, IDC_HAND);
 }
 
 void CursorManager::setCursor(Cursor cursor) {

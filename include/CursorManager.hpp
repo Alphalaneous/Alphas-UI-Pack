@@ -4,6 +4,8 @@
 
 #include "export.hpp"
 
+namespace alpha::ui {
+
 enum class Cursor {
     NONE,
     ARROW,
@@ -14,7 +16,7 @@ enum class Cursor {
     SIZE_NESW,
     SIZE_WE,
     SIZE_NS,
-    NO,
+    NOT_ALLOWED,
     HAND
 };
 
@@ -38,8 +40,10 @@ protected:
     std::unordered_map<Cursor, HCURSOR> m_cursors;
 
 #elif defined(GEODE_IS_MACOS)
-class NSCursor;
+@class NSCursor;
     bool m_hidden = false;
     std::unordered_map<Cursor, NSCursor*> m_cursors;
 #endif
 };
+
+}
