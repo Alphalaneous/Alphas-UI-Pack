@@ -158,14 +158,21 @@ void TouchDispatcher::clicks(TouchEvent* touch, TouchType type) {
     m_impl->m_dispatcher->m_bLocked = false;
 }
 
-#ifdef GEODE_IS_WINDOWS
 void TouchDispatcher::pollInput(const CCPoint& pos) {
     auto origStates = m_impl->m_states;
 
+    #if defined(GEODE_IS_WINDOWS)
     m_impl->m_states[MouseButton::MIDDLE]   = GetAsyncKeyState(VK_MBUTTON) & 0x8000;
     m_impl->m_states[MouseButton::RIGHT]    = GetAsyncKeyState(VK_RBUTTON) & 0x8000;
     m_impl->m_states[MouseButton::BUTTON3]  = GetAsyncKeyState(VK_XBUTTON1) & 0x8000;
     m_impl->m_states[MouseButton::BUTTON4]  = GetAsyncKeyState(VK_XBUTTON2) & 0x8000;
+    #elif defined(GEODE_IS_MACOS)
+    #include <CoreGraphics/CGEventSource.h>
+    m_impl->m_states[MouseButton::MIDDLE]   = CGEventSourceButtonState(kCGEventSourceStateHIDSystemState, kCGMouseButtonCenter);
+    m_impl->m_states[MouseButton::RIGHT]    = CGEventSourceButtonState(kCGEventSourceStateHIDSystemState, kCGMouseButtonRight);
+    m_impl->m_states[MouseButton::BUTTON3]  = CGEventSourceButtonState(kCGEventSourceStateHIDSystemState, (CGMouseButton)3);
+    m_impl->m_states[MouseButton::BUTTON4]  = CGEventSourceButtonState(kCGEventSourceStateHIDSystemState, (CGMouseButton)4);
+    #endif
 
     for (const auto& [button, state] : m_impl->m_states) {
         if (state != origStates[button]) {
@@ -191,7 +198,6 @@ void TouchDispatcher::pollInput(const CCPoint& pos) {
 
     m_impl->m_lastPos = pos;
 }
-#endif
 
 void TouchDispatcher::handleHover(const CCPoint& pos) {
     m_impl->m_hoverTouch->setTouchInfo(pos);
