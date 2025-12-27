@@ -1,5 +1,7 @@
 #include <Geode/Geode.hpp>
 #include "API.hpp"
+#include "Geode/cocos/layers_scenes_transitions_nodes/CCScene.h"
+#include "Geode/utils/cocos.hpp"
 
 using namespace geode::prelude;
 using namespace alpha::prelude;
@@ -12,6 +14,16 @@ CursorManager* CursorManager::get() {
         initialized = true;
     }
     return &instance;
+}
+
+bool CursorManager::isMouseInWindow() {
+    auto mousePos = getMousePos();
+    if (auto scene = CCScene::get()) {
+        auto sceneBox = scene->boundingBox();
+        return sceneBox.containsPoint(mousePos);
+    }
+
+    return false;
 }
 
 #ifdef GEODE_IS_DESKTOP
@@ -68,17 +80,6 @@ void CursorManager::resetCursor() {
     }
     ShowCursor(true);
     SetCursor(m_cursors[m_currentCursor]);
-}
-
-bool CursorManager::isMouseInWindow() {
-    POINT p;
-    GetCursorPos(&p);
-    HWND hwnd = alpha::utils::getHWND();
-    if (GetForegroundWindow() != hwnd) return false;
-    
-    RECT rect;
-    GetWindowRect(hwnd, &rect);
-    return (p.x >= rect.left && p.x <= rect.right && p.y >= rect.top  && p.y <= rect.bottom);
 }
 
 void CursorManager::update(float dt) {

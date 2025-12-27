@@ -43,15 +43,6 @@ void CursorManager::resetCursor() {
     }
 }
 
-bool CursorManager::isMouseInWindow() {
-    NSWindow *window = [[CCEGLView sharedOpenGLView] window];
-    if (![window isKeyWindow]) return false;
-
-    NSPoint mouseLoc = [NSEvent mouseLocation];
-    NSRect winFrame = [window frame];
-    return NSPointInRect(mouseLoc, winFrame);
-}
-
 void CursorManager::update(float dt) {
     if (isMouseInWindow()) {
         resetCursor();
