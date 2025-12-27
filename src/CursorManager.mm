@@ -1,5 +1,3 @@
-#ifdef GEODE_IS_MACOS
-
 #import <Cocoa/Cocoa.h>
 #include <Geode/Geode.hpp>
 #include "CursorManager.hpp"
@@ -65,5 +63,3 @@ void CursorManager::update(float dt) {
         }
     }
 }
-
-#endif
