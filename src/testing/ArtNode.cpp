@@ -102,6 +102,9 @@ bool ArtNode::clickBegan(TouchEvent* touch) {
     if (touch->getButton() == MouseButton::LEFT) {
         addPoint(convertToNodeSpace(touch->getLocation()));
     }
+    if (touch->getButton() == MouseButton::RIGHT) {
+        log::info("right clicked!!");
+    }
 
     switch (touch->getButton()) {
         case MouseButton::BUTTON3:
