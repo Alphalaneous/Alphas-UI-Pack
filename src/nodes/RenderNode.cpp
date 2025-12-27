@@ -157,10 +157,13 @@ void RenderNode::initFBO() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+    GLint prevFbo = 0;
+    glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFbo);
+
     glGenFramebuffers(1, &m_impl->m_fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, m_impl->m_fbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_impl->m_texture, 0);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, prevFbo);
 
     auto texObj = CCTexture2DExt::create(m_impl->m_texture, m_impl->m_texWidth, m_impl->m_texHeight, CCSize(m_impl->m_texWidth / scale, m_impl->m_texHeight / scale));
 
