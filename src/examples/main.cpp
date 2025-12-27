@@ -5,7 +5,7 @@
 using namespace geode::prelude;
 using namespace alpha::prelude;
 
-/*class $modify(MenuLayer) {
+class $modify(MenuLayer) {
 
 	bool init() {
 		if (!MenuLayer::init()) return false;
@@ -45,4 +45,4 @@ using namespace alpha::prelude;
 		auto testLayer = ScrollTestLayer::create();
 		testLayer->show();
 	}
-};*/
+};

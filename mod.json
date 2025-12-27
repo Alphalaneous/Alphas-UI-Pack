@@ -8,9 +8,9 @@
 	},
 	"id": "alphalaneous.alphas-ui-pack",
 	"name": "Alpha's UI Pack",
-	"version": "v1.0.0-alpha.1",
+	"version": "v1.0.0",
 	"developer": "Alphalaneous",
-	"description": "Adds an APIs for new UI elements",
+	"description": "Provides an APIs for new UI elements and tools",
 	"early-load": true,
 	"dependencies": {
 		"geode.devtools": {
@@ -31,5 +31,13 @@
 		"sprites": [
 			"resources/*.png"
 		]
-	}
+	},
+		"links": {
+        "homepage": "https://linktr.ee/Alphalaneous",
+        "source": "https://github.com/Alphalaneous/Alphas-UI-Pack",
+        "community": "https://discord.gg/Txn2CA5dHF"
+    },
+	"tags": [
+		"developer", "enhancement", "interface", "api"
+	]
 }

@@ -12,6 +12,12 @@ project(AlphasUIPack VERSION 1.0.0)
 
 file(GLOB_RECURSE CPPSOURCES CONFIGURE_DEPENDS src/*.cpp)
 
+foreach(FILE ${CPPSOURCES})
+    if(FILE MATCHES "/examples/")
+        list(REMOVE_ITEM CPPSOURCES ${FILE})
+    endif()
+endforeach()
+
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
