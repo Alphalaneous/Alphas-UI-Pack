@@ -40,11 +40,8 @@ protected:
     std::unordered_map<Cursor, HCURSOR> m_cursors;
 
 #elif defined(GEODE_IS_MACOS)
-#ifdef __OBJC__
-@class NSCursor;
-#endif
     bool m_hidden = false;
-    std::unordered_map<Cursor, NSCursor*> m_cursors;
+    std::unordered_map<Cursor, void*> m_cursors;
 #endif
 };
 

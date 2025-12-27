@@ -1,7 +1,5 @@
 #include <Geode/Geode.hpp>
 #include "API.hpp"
-#include "Geode/cocos/layers_scenes_transitions_nodes/CCScene.h"
-#include "Geode/utils/cocos.hpp"
 
 using namespace geode::prelude;
 using namespace alpha::prelude;
@@ -102,10 +100,6 @@ void CursorManager::setCursor(Cursor cursor) {
 }
 
 void CursorManager::resetCursor() {}
-
-bool CursorManager::isMouseInWindow() {
-    return true;
-}
 
 void CursorManager::update(float dt) {
 
