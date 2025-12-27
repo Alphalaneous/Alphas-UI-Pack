@@ -66,6 +66,9 @@ public:
     void setMinHandleHeight(float height);
     float getMinHandleHeight();
 
+    void setArrowButtonHeight(float height);
+    float getArrowButtonHeight();
+
     void setStyle(const ScrollBarStyle& style);
 
     void setTrack(ScrollBarElement* track);

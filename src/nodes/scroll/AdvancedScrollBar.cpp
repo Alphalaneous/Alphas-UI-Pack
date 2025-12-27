@@ -34,6 +34,13 @@ void AdvancedScrollBar::registerDevTools() {
     devtools::registerNode<AdvancedScrollBar>([](AdvancedScrollBar* node) {
         devtools::property("Lock to ScrollLayer", node->m_impl->m_lockToScrollLayer);
         devtools::property("Min Handle Height", node->m_impl->m_minHandleHeight);
+        devtools::property("Show Arrow Buttons", node->m_impl->m_style.m_showArrowButtons);
+
+        if (node->m_impl->m_style.m_showArrowButtons) {
+            if (devtools::property("Arrow Button Height", node->m_impl->m_style.m_arrowButtonHeight)) {
+                node->setArrowButtonHeight(node->m_impl->m_style.m_arrowButtonHeight);
+            }
+        }
 
         devtools::separator();
 
@@ -601,9 +608,7 @@ void AdvancedScrollBar::setStyle(const ScrollBarStyle& style) {
     setMargins(style.m_margins);
     setPadding(style.m_padding);
     showArrowButtons(style.m_showArrowButtons);
-
-    m_impl->m_upArrow->setContentHeight(style.m_arrowButtonHeight);
-    m_impl->m_downArrow->setContentHeight(style.m_arrowButtonHeight);
+    setArrowButtonHeight(style.m_arrowButtonHeight);
 
     setContentWidth(style.m_scrollBarWidth);
 
@@ -712,6 +717,16 @@ ScrollArrowElement* AdvancedScrollBar::getDownArrow() {
 
 ScrollOrientation AdvancedScrollBar::getOrientation() {
     return m_impl->m_orientation;
+}
+
+void AdvancedScrollBar::setArrowButtonHeight(float height) {
+    m_impl->m_style.m_arrowButtonHeight = height;
+    m_impl->m_upArrow->setContentHeight(height);
+    m_impl->m_downArrow->setContentHeight(height);
+}
+
+float AdvancedScrollBar::getArrowButtonHeight() {
+    return m_impl->m_style.m_arrowButtonHeight;
 }
 
 $execute {

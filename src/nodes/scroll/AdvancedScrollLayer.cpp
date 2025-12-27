@@ -92,6 +92,17 @@ void AdvancedScrollLayer::registerDevTools() {
             node->allowEmptyClickThrough(node->m_impl->m_allowEmptyClickThrough);
         }
 
+        devtools::property("Can Zoom", node->m_impl->m_allowsZoom);
+        if (node->m_impl->m_allowsZoom) {
+            float scale = node->m_impl->m_contentContainer->getScale();
+            if (devtools::property("Zoom", scale)) {
+                node->setZoom(scale);
+            }
+
+            devtools::property("Min Zoom", node->m_impl->m_minZoom);
+            devtools::property("Max Zoom", node->m_impl->m_maxZoom);
+        }
+
         devtools::property("Vertical Scroll", node->m_impl->m_verticalScroll);
         devtools::property("Vertical Scroll Wheel", node->m_impl->m_verticalScrollWheel);
 
@@ -407,7 +418,7 @@ bool AdvancedScrollLayer::ccTouchBegan(CCTouch* touch, CCEvent* event) {
 void AdvancedScrollLayer::ccTouchMoved(CCTouch* touch, CCEvent* event) {
     if (!m_impl->m_draggingEnabled || !nodeIsVisible(this)) return;
 
-    if (m_impl->m_activeTouches.size() == 2 && m_impl->m_allowsZoom) {
+    /*if (m_impl->m_activeTouches.size() == 2 && m_impl->m_allowsZoom) {
         CCTouch* t1 = m_impl->m_activeTouches[0];
         CCTouch* t2 = m_impl->m_activeTouches[1];
 
@@ -417,9 +428,9 @@ void AdvancedScrollLayer::ccTouchMoved(CCTouch* touch, CCEvent* event) {
         float zoomDelta = currDist - prevDist;
         zoom(zoomDelta);
         return;
-    }
+    }*/
 
-    if (m_impl->m_activeTouches.size() == 1) {
+    //if (m_impl->m_activeTouches.size() == 1) {
         CCPoint prev = convertToNodeSpace(touch->getPreviousLocation());
         CCPoint curr = convertToNodeSpace(touch->getLocation());
         CCPoint delta = curr - prev;
@@ -449,7 +460,7 @@ void AdvancedScrollLayer::ccTouchMoved(CCTouch* touch, CCEvent* event) {
                 m_impl->m_samples.erase(m_impl->m_samples.begin());
             }
         }
-    }
+    //}
 }
 
 void AdvancedScrollLayer::ccTouchEnded(CCTouch* touch, CCEvent* event) {
@@ -1076,7 +1087,7 @@ float AdvancedScrollLayer::getZoom() {
 }
 
 void AdvancedScrollLayer::setZoom(float zoom) {
-    m_impl->m_contentContainer->setScale(zoom);
+    m_impl->m_contentContainer->setScale(std::clamp(zoom, m_impl->m_minZoom, m_impl->m_maxZoom));
 }
 
 $execute {
