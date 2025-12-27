@@ -14,7 +14,7 @@ file(GLOB_RECURSE CPPSOURCES CONFIGURE_DEPENDS src/*.cpp)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-if(APPLE)
+if(MACOS)
     file(GLOB_RECURSE OBJCXXSOURCES CONFIGURE_DEPENDS src/*.mm)
     enable_language(OBJCXX)
     set(SOURCES ${CPPSOURCES} ${OBJCXXSOURCES})
@@ -24,7 +24,7 @@ endif()
 
 add_library(${PROJECT_NAME} SHARED ${SOURCES})
 
-if(APPLE)
+if(MACOS)
     find_library(COCOA_LIBRARY Cocoa REQUIRED)
     target_link_libraries(${PROJECT_NAME} ${COCOA_LIBRARY})
 endif()
