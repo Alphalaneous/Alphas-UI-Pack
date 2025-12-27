@@ -301,24 +301,24 @@ bool AdvancedScrollBar::ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* 
     m_impl->m_handle->setContentWidth(getContentWidth());
     m_impl->m_handle->setPositionX(0);
 
-    if (alpha::utils::isTouchInsideNode(m_impl->m_handle, touch->getLocation())) {
+    if (alpha::utils::isPointInsideNode(m_impl->m_handle, touch->getLocation())) {
         m_impl->m_dragging = true;
         m_impl->m_handle->onClickInternal(local);
         m_impl->m_touchOffset = local.y - m_impl->m_handle->getPositionY() + m_impl->m_handle->getContentHeight() / 2.f;
         m_impl->m_touchedElement = m_impl->m_handle;
         wasTouched = true;
     }
-    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isTouchInsideNode(m_impl->m_upArrow, touch->getLocation())) {
+    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isPointInsideNode(m_impl->m_upArrow, touch->getLocation())) {
         m_impl->m_upArrow->onClickInternal(local);
         m_impl->m_touchedElement = m_impl->m_upArrow;
         wasTouched = true;
     }
-    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isTouchInsideNode(m_impl->m_downArrow, touch->getLocation())) {
+    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isPointInsideNode(m_impl->m_downArrow, touch->getLocation())) {
         m_impl->m_downArrow->onClickInternal(local);
         m_impl->m_touchedElement = m_impl->m_downArrow;
         wasTouched = true;
     }
-    else if (alpha::utils::isTouchInsideNode(m_impl->m_track, touch->getLocation())) {
+    else if (alpha::utils::isPointInsideNode(m_impl->m_track, touch->getLocation())) {
         m_impl->m_track->onClickInternal(local);
         handleScroll(local.y, true);
         m_impl->m_touchedElement = m_impl->m_track;
@@ -354,16 +354,16 @@ bool AdvancedScrollBar::mouseEntered(TouchEvent* touch) {
     if (!nodeIsVisible(this)) return false;
     CCPoint local = convertToNodeSpace(touch->getLocation());
 
-    if (alpha::utils::isTouchInsideNode(m_impl->m_handle, touch->getLocation())) {
+    if (alpha::utils::isPointInsideNode(m_impl->m_handle, touch->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_handle;
     }
-    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isTouchInsideNode(m_impl->m_upArrow, touch->getLocation())) {
+    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isPointInsideNode(m_impl->m_upArrow, touch->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_upArrow;
     }
-    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isTouchInsideNode(m_impl->m_downArrow, touch->getLocation())) {
+    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isPointInsideNode(m_impl->m_downArrow, touch->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_downArrow;
     }
-    else if (alpha::utils::isTouchInsideNode(m_impl->m_track, touch->getLocation())) {
+    else if (alpha::utils::isPointInsideNode(m_impl->m_track, touch->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_track;
     }
 
@@ -377,16 +377,16 @@ void AdvancedScrollBar::mouseMoved(TouchEvent* touch) {
 
     auto currentHover = m_impl->m_hoveredElement;
 
-    if (alpha::utils::isTouchInsideNode(m_impl->m_handle, touch->getLocation())) {
+    if (alpha::utils::isPointInsideNode(m_impl->m_handle, touch->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_handle;
     }
-    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isTouchInsideNode(m_impl->m_upArrow, touch->getLocation())) {
+    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isPointInsideNode(m_impl->m_upArrow, touch->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_upArrow;
     }
-    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isTouchInsideNode(m_impl->m_downArrow, touch->getLocation())) {
+    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isPointInsideNode(m_impl->m_downArrow, touch->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_downArrow;
     }
-    else if (alpha::utils::isTouchInsideNode(m_impl->m_track, touch->getLocation())) {
+    else if (alpha::utils::isPointInsideNode(m_impl->m_track, touch->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_track;
     }
 

@@ -8,8 +8,8 @@ bool TouchDelegate::ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* even
     auto mouseEvent = TouchEvent::create(MouseButton::TOUCH);
     if (auto node = typeinfo_cast<CCNode*>(this)) {
         if (auto scrollLayer = static_cast<CCNode*>(node->getUserObject("scroll-layer"_spr))) {
-            bool insideScroll = alpha::utils::isTouchInsideNode(scrollLayer, touch->getLocation());
-            bool insideNode = alpha::utils::isTouchInsideNode(node, touch->getLocation());
+            bool insideScroll = alpha::utils::isPointInsideNode(scrollLayer, touch->getLocation());
+            bool insideNode = alpha::utils::isPointInsideNode(node, touch->getLocation());
 
             if (!insideScroll || !insideNode) return false;
         }

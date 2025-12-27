@@ -37,10 +37,6 @@ void TouchDispatcher::init() {
     m_impl->m_hoverTouch = TouchEvent::create(MouseButton::HOVER);
 }
 
-void TouchDispatcher::queueSort() {
-    m_impl->m_shouldRearrangeHandlers = true;
-}
-
 void TouchDispatcher::rearrangeHandlers() {
     if (m_impl->m_shouldRearrangeHandlers) {
         auto handlers = CCArrayExt<CCTouchHandler*>(m_impl->m_dispatcher->m_pTargetedHandlers);
@@ -60,10 +56,10 @@ void TouchDispatcher::hovers(TouchEvent* touch) {
 
         const CCPoint location = touch->getLocation();
 
-        bool inside = alpha::utils::isTouchInsideNode(node, location);
+        bool inside = alpha::utils::isPointInsideNode(node, location);
 
         if (auto scrollLayer = static_cast<CCNode*>(node->getUserObject("scroll-layer"_spr))) {
-            inside = alpha::utils::isTouchInsideNode(scrollLayer, location) && inside;
+            inside = alpha::utils::isPointInsideNode(scrollLayer, location) && inside;
         }
 
         const bool swallows = handler->m_bSwallowsTouches;
@@ -113,7 +109,7 @@ void TouchDispatcher::clicks(TouchEvent* touch, TouchType type) {
         bool touchClaimed = false;
         auto node = typeinfo_cast<CCNode*>(handler->getDelegate());
         bool insideNode = true;
-        if (node) insideNode = alpha::utils::isTouchInsideNode(node, location);
+        if (node) insideNode = alpha::utils::isPointInsideNode(node, location);
 
         auto delegate = typeinfo_cast<TouchDelegate*>(handler->getDelegate());
         if (!delegate) {
@@ -127,7 +123,7 @@ void TouchDispatcher::clicks(TouchEvent* touch, TouchType type) {
 
         if (node) {
             if (auto scrollLayer = static_cast<CCNode*>(node->getUserObject("scroll-layer"_spr))) {
-                bool inside = alpha::utils::isTouchInsideNode(scrollLayer, location) && insideNode;
+                bool inside = alpha::utils::isPointInsideNode(scrollLayer, location) && insideNode;
                 if (!inside) continue;
             }
         }

@@ -41,7 +41,7 @@ void TouchBlocker::onExit() {
 }
 
 bool TouchBlocker::clickBegan(TouchEvent* touch) {
-    return alpha::utils::isTouchInsideNode(m_impl->m_target, touch->getLocation());
+    return alpha::utils::isPointInsideNode(m_impl->m_target, touch->getLocation());
 }
 
 void TouchBlocker::setTarget(CCNode* node) {

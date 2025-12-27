@@ -384,7 +384,7 @@ bool AdvancedScrollLayer::ccTouchBegan(CCTouch* touch, CCEvent* event) {
     m_impl->m_activeTouches.push_back(touch);
 
 
-    if (!alpha::utils::isTouchInsideNode(m_impl->m_clickNode, touch->getLocation())) {
+    if (!alpha::utils::isPointInsideNode(m_impl->m_clickNode, touch->getLocation())) {
         setVisible(false);
         runAction(CallFuncExt::create([this, touch = Ref(touch), event = Ref(event)] {
             cancelChildrenTouches(touch, event);

@@ -37,7 +37,7 @@ const std::vector<AdvancedScrollDelegate*>& ScrollDispatcher::getDelegates() {
 class $modify(ScrollCCMouseDispatcher, cocos2d::CCMouseDispatcher) {
 	bool dispatchScrollMSG(float y, float x) {
         for (AdvancedScrollDelegate* scrollDelegate : ScrollDispatcher::get()->getDelegates()) {
-            if (!alpha::utils::isTouchInsideNode(typeinfo_cast<CCNode*>(scrollDelegate), getMousePos())) continue;
+            if (!alpha::utils::isPointInsideNode(typeinfo_cast<CCNode*>(scrollDelegate), getMousePos())) continue;
 
             bool shouldScroll = true;
 
@@ -62,7 +62,7 @@ class $modify(ScrollCCMouseDispatcher, cocos2d::CCMouseDispatcher) {
 class $modify(ScrollCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
 	bool dispatchKeyboardMSG(cocos2d::enumKeyCodes key, bool isKeyDown, bool isKeyRepeat) {
         for (AdvancedScrollDelegate* scrollDelegate : ScrollDispatcher::get()->getDelegates()) {
-            if (!alpha::utils::isTouchInsideNode(typeinfo_cast<CCNode*>(scrollDelegate), getMousePos())) continue;
+            if (!alpha::utils::isPointInsideNode(typeinfo_cast<CCNode*>(scrollDelegate), getMousePos())) continue;
 
             if (CCKeyboardDispatcher::get()->getControlKeyPressed() || CCKeyboardDispatcher::get()->getCommandKeyPressed()) {
                 if (isKeyDown) {

@@ -44,7 +44,7 @@ struct WindowsClassicButton : public CCNodeRGBA, public TouchDelegate {
     }
 
     virtual bool clickBegan(TouchEvent* touch) override { 
-        if (!alpha::utils::isTouchInsideNode(this, touch->getLocation())) return false;
+        if (!alpha::utils::isPointInsideNode(this, touch->getLocation())) return false;
         if (touch->getButton() != MouseButton::LEFT) return true;
         m_background->setRotation(180);
 
@@ -56,7 +56,7 @@ struct WindowsClassicButton : public CCNodeRGBA, public TouchDelegate {
 
 	virtual void clickMoved(TouchEvent* touch) override {
         if (touch->getButton() != MouseButton::LEFT) return;
-        if (alpha::utils::isTouchInsideNode(this, touch->getLocation())) {
+        if (alpha::utils::isPointInsideNode(this, touch->getLocation())) {
             auto offset = CCPoint{0.5f, -0.5f};
             m_closeSpr->setPosition((getContentSize()/2) + offset);
             m_background->setRotation(180);
@@ -68,7 +68,7 @@ struct WindowsClassicButton : public CCNodeRGBA, public TouchDelegate {
     }
 
 	virtual void clickEnded(TouchEvent* touch) override {
-        if (!alpha::utils::isTouchInsideNode(this, touch->getLocation())) return;
+        if (!alpha::utils::isPointInsideNode(this, touch->getLocation())) return;
         if (touch->getButton() != MouseButton::LEFT) return;
 
         if (m_callback) m_callback();
@@ -128,11 +128,11 @@ struct ScrollTestLayer : public CCNode, public TouchDelegate {
     }
 
 	virtual bool clickBegan(TouchEvent* touch) override { 
-        if (!alpha::utils::isTouchInsideNode(this, touch->getLocation())) return false;
+        if (!alpha::utils::isPointInsideNode(this, touch->getLocation())) return false;
         if (touch->getButton() != MouseButton::LEFT) return true;
         
-        if (!alpha::utils::isTouchInsideNode(m_container, touch->getLocation())) {
-            if (alpha::utils::isTouchInsideNode(m_titleBar, touch->getLocation())) {
+        if (!alpha::utils::isPointInsideNode(m_container, touch->getLocation())) {
+            if (alpha::utils::isPointInsideNode(m_titleBar, touch->getLocation())) {
                 m_startMove = getParent()->convertToNodeSpace(touch->getLocation());
                 m_startPos = getPosition();
                 m_moving = true;

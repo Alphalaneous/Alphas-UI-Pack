@@ -33,24 +33,24 @@ $execute {
 #ifdef GEODE_IS_WINDOWS
 #include <Geode/modify/CCEGLView.hpp>
 
-class $modify(CCEGLView) {
-    void setupWindow(cocos2d::CCRect rect) {
-        CCEGLView::setupWindow(rect);
-        CursorManager::setWndProc();
-    }
-};
-
-LONG_PTR CursorManager::oWindowProc;
+static LONG_PTR oWindowProc;
 
 LRESULT CALLBACK nWindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
-    auto ret = CallWindowProc((WNDPROC)CursorManager::oWindowProc, hwnd, msg, wparam, lparam);
+    auto ret = CallWindowProc((WNDPROC)oWindowProc, hwnd, msg, wparam, lparam);
 	CursorManager::get()->resetCursor();
 	return ret;
 }
 
-void CursorManager::setWndProc() {
+static void setWndProc() {
     oWindowProc = SetWindowLongPtrA(alpha::utils::getHWND(), -4, (LONG_PTR)nWindowProc);
 }
+
+class $modify(MyCCEGLView, CCEGLView) {
+    void setupWindow(cocos2d::CCRect rect) {
+        CCEGLView::setupWindow(rect);
+        ::setWndProc();
+    }
+};
 
 void CursorManager::init() {
     m_cursors[Cursor::ARROW]       = LoadCursor(NULL, IDC_ARROW);

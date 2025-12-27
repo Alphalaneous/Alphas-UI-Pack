@@ -1,7 +1,7 @@
 #include <Geode/Geode.hpp>
 #include "Utils.hpp"
 
-bool alpha::utils::isTouchInsideNode(cocos2d::CCNode* node, const cocos2d::CCPoint& touch) {
+bool alpha::utils::isPointInsideNode(cocos2d::CCNode* node, const cocos2d::CCPoint& touch) {
     if (!node) return false;
 
     cocos2d::CCPoint local = node->convertToNodeSpace(touch);

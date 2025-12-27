@@ -96,7 +96,7 @@ void ArtNode::addPoint(const CCPoint& p) {
 }
 
 bool ArtNode::clickBegan(TouchEvent* touch) {
-    if (!alpha::utils::isTouchInsideNode(this, touch->getLocation())) return false;
+    if (!alpha::utils::isPointInsideNode(this, touch->getLocation())) return false;
     m_holding = true;
 
     if (touch->getButton() == MouseButton::LEFT) {
