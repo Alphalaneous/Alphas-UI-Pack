@@ -25,7 +25,6 @@ bool ArtNode::init(const CCSize& size) {
 
     m_canvas = CCRenderTexture::create(size.width, size.height);
     m_canvas->setContentSize(getContentSize());
-    m_canvas->getSprite()->getTexture()->setAntiAliasTexParameters();
     m_canvas->ignoreAnchorPointForPosition(false);
     m_canvas->setAnchorPoint({0.f, 0.f});
     m_canvas->setPosition(getContentSize()/2);
