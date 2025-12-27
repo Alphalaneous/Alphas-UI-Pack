@@ -2,7 +2,7 @@
 
 #include <Geode/cocos/cocoa/CCObject.h>
 
-#include "API.hpp"
+#include "export.hpp"
 
 enum class Cursor {
     NONE,
@@ -38,7 +38,7 @@ protected:
     std::unordered_map<Cursor, HCURSOR> m_cursors;
 
 #elif defined(GEODE_IS_MACOS)
-#import <Cocoa/Cocoa.h>    
+class NSCursor;
     bool m_hidden = false;
     std::unordered_map<Cursor, NSCursor*> m_cursors;
 #endif

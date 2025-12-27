@@ -14,9 +14,11 @@ CursorManager* CursorManager::get() {
     return &instance;
 }
 
+#ifdef GEODE_IS_DESKTOP
 $execute {
 	CCScheduler::get()->scheduleUpdateForTarget(CursorManager::get(), INT_MIN, false);
 }
+#endif
 
 #ifdef GEODE_IS_WINDOWS
 #include <Geode/modify/CCEGLView.hpp>
@@ -87,6 +89,25 @@ void CursorManager::update(float dt) {
         SetCursor(m_cursors[Cursor::ARROW]);
         ShowCursor(true);
     }
+}
+
+#endif
+
+#ifndef GEODE_IS_DESKTOP
+void CursorManager::init() {}
+
+void CursorManager::setCursor(Cursor cursor) {
+    log::debug("setting cursors is not supported on mobile");
+}
+
+void CursorManager::resetCursor() {}
+
+bool CursorManager::isMouseInWindow() {
+    return true;
+}
+
+void CursorManager::update(float dt) {
+
 }
 
 #endif

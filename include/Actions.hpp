@@ -2,7 +2,7 @@
 
 #include <Geode/cocos/actions/CCActionInterval.h>
 
-#include "API.hpp"
+#include "export.hpp"
 
 namespace alpha::ui {
 

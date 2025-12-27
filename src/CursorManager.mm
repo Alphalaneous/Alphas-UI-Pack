@@ -1,5 +1,6 @@
 #ifdef GEODE_IS_MACOS
 
+#import <Cocoa/Cocoa.h>
 #include <Geode/Geode.hpp>
 #include "CursorManager.hpp"
 
