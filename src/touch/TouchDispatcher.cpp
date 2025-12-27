@@ -1,6 +1,10 @@
 #include <Geode/Geode.hpp>
 #include "API.hpp"
 
+#if defined(GEODE_IS_MACOS)
+#include <CoreGraphics/CGEventSource.h>
+#endif
+
 using namespace geode::prelude;
 using namespace alpha::prelude;
 
@@ -167,7 +171,6 @@ void TouchDispatcher::pollInput(const CCPoint& pos) {
     m_impl->m_states[MouseButton::BUTTON3]  = GetAsyncKeyState(VK_XBUTTON1) & 0x8000;
     m_impl->m_states[MouseButton::BUTTON4]  = GetAsyncKeyState(VK_XBUTTON2) & 0x8000;
     #elif defined(GEODE_IS_MACOS)
-    #include <CoreGraphics/CGEventSource.h>
     m_impl->m_states[MouseButton::MIDDLE]   = CGEventSourceButtonState(kCGEventSourceStateHIDSystemState, kCGMouseButtonCenter);
     m_impl->m_states[MouseButton::RIGHT]    = CGEventSourceButtonState(kCGEventSourceStateHIDSystemState, kCGMouseButtonRight);
     m_impl->m_states[MouseButton::BUTTON3]  = CGEventSourceButtonState(kCGEventSourceStateHIDSystemState, (CGMouseButton)3);
