@@ -1,14 +1,14 @@
 {
-	"geode": "4.10.0",
+	"geode": "5.0.0-alpha.1",
 	"gd": {
-		"win": "2.2074",
-		"android": "2.2074",
-		"mac": "2.2074",
-		"ios": "2.2074"
+		"win": "2.2081",
+		"android": "2.2081",
+		"mac": "2.2081",
+		"ios": "2.2081"
 	},
 	"id": "alphalaneous.alphas-ui-pack",
 	"name": "Alpha's UI Pack",
-	"version": "v1.0.0",
+	"version": "v1.0.1",
 	"developer": "Alphalaneous",
 	"description": "Provides an APIs for new UI elements and tools",
 	"early-load": true,

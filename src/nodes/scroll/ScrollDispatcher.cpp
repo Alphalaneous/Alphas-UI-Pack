@@ -60,7 +60,7 @@ class $modify(ScrollCCMouseDispatcher, cocos2d::CCMouseDispatcher) {
 };
 
 class $modify(ScrollCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
-	bool dispatchKeyboardMSG(cocos2d::enumKeyCodes key, bool isKeyDown, bool isKeyRepeat) {
+	bool dispatchKeyboardMSG(cocos2d::enumKeyCodes key, bool isKeyDown, bool isKeyRepeat, double t) {
         for (AdvancedScrollDelegate* scrollDelegate : ScrollDispatcher::get()->getDelegates()) {
             if (!alpha::utils::isPointInsideNode(typeinfo_cast<CCNode*>(scrollDelegate), getMousePos())) continue;
 
@@ -78,7 +78,7 @@ class $modify(ScrollCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
             scrollDelegate->keyPress(key, isKeyDown, isKeyRepeat);
             break;
         }
-        return CCKeyboardDispatcher::dispatchKeyboardMSG(key, isKeyDown, isKeyRepeat);
+        return CCKeyboardDispatcher::dispatchKeyboardMSG(key, isKeyDown, isKeyRepeat, t);
     }
 };
 #endif
