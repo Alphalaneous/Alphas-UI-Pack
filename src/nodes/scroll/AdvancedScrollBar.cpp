@@ -1,6 +1,6 @@
 #include <Geode/Geode.hpp>
 #include "API.hpp"
-//#include <geode.devtools/include/API.hpp>
+#include <geode.devtools/include/API.hpp>
 
 using namespace geode::prelude;
 using namespace alpha::prelude;
@@ -31,7 +31,7 @@ struct AdvancedScrollBar::Impl final {
 };
 
 void AdvancedScrollBar::registerDevTools() {
-    /*devtools::registerNode<AdvancedScrollBar>([](AdvancedScrollBar* node) {
+    devtools::registerNode<AdvancedScrollBar>([](AdvancedScrollBar* node) {
         devtools::property("Lock to ScrollLayer", node->m_impl->m_lockToScrollLayer);
         devtools::property("Min Handle Height", node->m_impl->m_minHandleHeight);
         devtools::property("Show Arrow Buttons", node->m_impl->m_style.m_showArrowButtons);
@@ -76,7 +76,7 @@ void AdvancedScrollBar::registerDevTools() {
             devtools::property("Top##margins-top", node->m_impl->m_style.m_margins.right);
             devtools::property("Bottom##margins-bottom", node->m_impl->m_style.m_margins.left);
         }
-    });*/
+    });
 }
 
 AdvancedScrollBar::AdvancedScrollBar() : m_impl(std::make_unique<Impl>()) {}
@@ -729,8 +729,8 @@ float AdvancedScrollBar::getArrowButtonHeight() {
     return m_impl->m_style.m_arrowButtonHeight;
 }
 
-/*$execute {
+$execute {
     devtools::waitForDevTools([] {
         AdvancedScrollBar::registerDevTools();
     });
-}*/
+}

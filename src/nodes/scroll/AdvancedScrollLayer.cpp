@@ -1,6 +1,6 @@
 #include <Geode/Geode.hpp>
 #include "API.hpp"
-//#include <geode.devtools/include/API.hpp>
+#include <geode.devtools/include/API.hpp>
 
 using namespace geode::prelude;
 using namespace alpha::prelude;
@@ -70,7 +70,7 @@ AdvancedScrollLayer::AdvancedScrollLayer() : m_impl(std::make_unique<Impl>()) {}
 AdvancedScrollLayer::~AdvancedScrollLayer() = default;
 
 void AdvancedScrollLayer::registerDevTools() {
-    /*devtools::registerNode<AdvancedScrollLayer>([](AdvancedScrollLayer* node) {
+    devtools::registerNode<AdvancedScrollLayer>([](AdvancedScrollLayer* node) {
 
         devtools::label(fmt::format("Holding: {}", node->m_impl->m_holding).c_str());
         devtools::label(fmt::format("Dragging: {}", node->m_impl->m_dragging).c_str());
@@ -123,7 +123,7 @@ void AdvancedScrollLayer::registerDevTools() {
 
     devtools::registerNode<ScrollContent>([](ScrollContent* node) {
         devtools::property("Scroll Position", node->getScrollLayer()->m_impl->m_scrollPoint);
-    });*/
+    });
 }
 
 AdvancedScrollLayer* AdvancedScrollLayer::create(const CCSize& size, const CullingMethod& cullingMethod) {
@@ -156,7 +156,6 @@ bool AdvancedScrollLayer::init(const CCSize& size, CullingMethod cullingMethod) 
     ignoreAnchorPointForPosition(false);
 
     m_impl->m_contentArr = CCArray::create();
-    m_impl->m_contentArr->addObject(m_impl->m_content);
 
     m_impl->m_contentContainer = CCNode::create();
     m_impl->m_contentContainer->setAnchorPoint({0.f, 1.f});
@@ -216,6 +215,7 @@ void AdvancedScrollLayer::handleTouchPrio() {
 
             if (auto node = typeinfo_cast<CCNode*>(h->getDelegate())) {
                 node->setUserObject("scroll-layer"_spr, this);
+                this->release();
             }
 
             int newPrio = getTouchPriority() + normalized - 2;
@@ -257,6 +257,8 @@ void AdvancedScrollLayer::onEnter() {
     CCTouchDispatcher::get()->addTargetedDelegate(this, getTouchPriority(), false);
     ScrollDispatcher::get()->registerScroll(this);
 
+    m_impl->m_contentArr->addObject(m_impl->m_content);
+
     runAction(CallFuncExt::create([this] {
         m_impl->m_prevScrollPoint = CCPoint{FLT_MIN, FLT_MIN};
     }));
@@ -271,6 +273,8 @@ void AdvancedScrollLayer::onExit() {
     CCNode::onExit();
     CCTouchDispatcher::get()->removeDelegate(this);
     ScrollDispatcher::get()->unregisterScroll(this);
+
+    m_impl->m_contentArr->removeAllObjects();
 }
 
 // We don't actually want AdvancedScrollLayer to have any "real" children for the sake of simplicity.
@@ -1103,8 +1107,8 @@ void AdvancedScrollLayer::setZoom(float zoom) {
     m_impl->m_contentContainer->setScale(std::clamp(zoom, m_impl->m_minZoom, m_impl->m_maxZoom));
 }
 
-/*$execute {
+$execute {
     devtools::waitForDevTools([] {
         AdvancedScrollLayer::registerDevTools();
     });
-}*/
+}

@@ -1,3 +1,6 @@
+# 1.0.5
+- Fix a potential memory leak
+
 # 1.0.4
 - Remove cursor support for all platforms. Too annoying to deal with.
 
