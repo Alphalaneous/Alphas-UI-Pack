@@ -16,8 +16,6 @@ Provides a bunch of extra nodes and tools:
   - Wraps a node and renders it to this as a sprite.
 ## TouchBlocker
   - Easily block touch based on another node's bounds.
-## CursorManager 
-  - Allows changing the mouse cursor easily
 ## TouchDispatcher 
   - Brings proper hover controls as well as Right, Middle, Button 3, and Button 4 click support.
   - Supports normal touch prio, staying consistent with Geometry Dash.
