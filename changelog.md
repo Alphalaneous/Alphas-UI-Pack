@@ -1,3 +1,6 @@
+# 1.0..6
+- Fixes for Better Touch Prio mod
+
 # 1.0.5
 - Fix a potential memory leak
 

@@ -8,7 +8,7 @@
     },
     "id": "alphalaneous.alphas-ui-pack",
     "name": "Alpha's UI Pack",
-    "version": "v1.0.5",
+    "version": "v1.0.6",
     "developer": "Alphalaneous",
     "description": "Provides an APIs for new UI elements and tools",
     "early-load": true,

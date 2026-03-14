@@ -152,6 +152,8 @@ bool AdvancedScrollLayer::init(const CCSize& size, CullingMethod cullingMethod) 
 
     m_impl->m_cullingMethod = std::move(cullingMethod);
 
+    setUserFlag("alk.better-touch-prio/steals-touch");
+
     setAnchorPoint({0.5f, 0.5f});
     ignoreAnchorPointForPosition(false);
 

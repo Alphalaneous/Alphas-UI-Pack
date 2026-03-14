@@ -43,6 +43,7 @@ void TouchBlocker::onExit() {
 
 bool TouchBlocker::clickBegan(TouchEvent* touch) {
     if (!m_impl->m_enabled) return false;
+    if (!nodeIsVisible(m_impl->m_target)) return false;
     return alpha::utils::isPointInsideNode(m_impl->m_target, touch->getLocation());
 }
 
