@@ -1,4 +1,7 @@
-# 1.0..6
+# 1.0.7
+- Fix potential leak on orphaned RenderNodes
+
+# 1.0.6
 - Fixes for Better Touch Prio mod
 
 # 1.0.5

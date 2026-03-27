@@ -61,8 +61,8 @@ protected:
 };
 
 struct RenderNode::Impl final {
-    geode::Ref<cocos2d::CCNode> m_nodeToRender;
-    geode::Ref<cocos2d::CCArray> m_children;
+    Ref<cocos2d::CCNode> m_nodeToRender;
+    Ref<cocos2d::CCArray> m_children;
     GLuint m_fbo = 0;
     GLuint m_texture = 0;
     int m_texWidth = 0;
@@ -96,6 +96,8 @@ bool RenderNode::init(CCNode* node, bool constrain) {
 
     m_impl->m_constain = constrain;
 
+    unscheduleUpdate();
+
     if (constrain) {
         setPosition(node->getPosition());
         setContentSize(node->getContentSize());
@@ -123,10 +125,6 @@ bool RenderNode::init(CCNode* node, bool constrain) {
     m_impl->m_nodeToRender = node;
 
     if (!node->getParent()) node->m_pParent = this; 
-
-    m_impl->m_children->addObject(m_impl->m_nodeToRender);
-
-    scheduleUpdate();
 
     return true;
 }
@@ -238,16 +236,22 @@ void RenderNode::render() {
 
 void RenderNode::onEnter() {
     CCSprite::onEnter();
+    schedule(schedule_selector(RenderNode::renderUpdate));
+    
+    m_impl->m_children->addObject(m_impl->m_nodeToRender);
     m_impl->m_nodeToRender->onEnter();
     update(0);
 }
 
 void RenderNode::onExit() {
     CCSprite::onExit();
+    unschedule(schedule_selector(RenderNode::renderUpdate));
+
+    m_impl->m_children->removeAllObjects();
     m_impl->m_nodeToRender->onExit();
 }
 
-void RenderNode::update(float dt) {
+void RenderNode::renderUpdate(float dt) {
     render();
 }
 

@@ -67,6 +67,13 @@ public:
     void render();
 
     /**
+     * @brief Updates the render every frame.
+     * 
+     * @param dt Delta time since the last update.
+     */
+    void renderUpdate(float dt);
+
+    /**
      * @brief Called when the node enters the scene.
      */
     virtual void onEnter() override;
@@ -75,13 +82,6 @@ public:
      * @brief Called when the node exits the scene.
      */
     virtual void onExit() override;
-
-    /**
-     * @brief Updates the node every frame.
-     *
-     * @param dt Delta time since the last update.
-     */
-    virtual void update(float dt) override;
 
     /**
      * @brief Adds a child node with the specified z-order and tag.
