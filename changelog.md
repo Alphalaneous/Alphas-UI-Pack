@@ -1,3 +1,6 @@
+# 1.0.8
+- RenderNode fixes
+
 # 1.0.7
 - Fix potential leak on orphaned RenderNodes
 

@@ -61,8 +61,7 @@ protected:
 };
 
 struct RenderNode::Impl final {
-    Ref<cocos2d::CCNode> m_nodeToRender;
-    Ref<cocos2d::CCArray> m_children;
+    WeakRef<cocos2d::CCNode> m_nodeToRender;
     GLuint m_fbo = 0;
     GLuint m_texture = 0;
     int m_texWidth = 0;
@@ -91,8 +90,6 @@ bool RenderNode::init(CCNode* node, bool constrain) {
     if (!node) return false;
 
     CCSprite::init();
-
-    m_impl->m_children = CCArray::create();
 
     m_impl->m_constain = constrain;
 
@@ -131,6 +128,9 @@ bool RenderNode::init(CCNode* node, bool constrain) {
 
 void RenderNode::initFBO() {
 
+    auto node = m_impl->m_nodeToRender.lock();
+    if (!node) return; 
+
     GLint viewport[4];
     glGetIntegerv(GL_VIEWPORT, viewport);
     auto winSize = CCDirector::get()->getWinSize();
@@ -138,8 +138,8 @@ void RenderNode::initFBO() {
     auto scale = CCDirector::get()->getContentScaleFactor();
 
     if (m_impl->m_constain) {
-        m_impl->m_texWidth = m_impl->m_nodeToRender->getContentSize().width * scale;
-        m_impl->m_texHeight = m_impl->m_nodeToRender->getContentSize().height * scale;
+        m_impl->m_texWidth = node->getContentSize().width * scale;
+        m_impl->m_texHeight = node->getContentSize().height * scale;
     } else {
         m_impl->m_texWidth = winSize.width * scale;
         m_impl->m_texHeight = winSize.height * scale;
@@ -169,7 +169,7 @@ void RenderNode::initFBO() {
 
     if (m_impl->m_constain) {
         setTextureRect({0, 0, m_impl->m_texWidth / scale, m_impl->m_texHeight / scale});
-        setContentSize(m_impl->m_nodeToRender->getContentSize());
+        setContentSize(node->getContentSize());
     } else {
         auto winSize = CCDirector::get()->getWinSize();
         setTextureRect({0, 0, winSize.width, winSize.height});
@@ -180,8 +180,11 @@ void RenderNode::initFBO() {
 void RenderNode::render() {
     if (!m_impl->m_fbo) initFBO();
 
-    auto parent = m_impl->m_nodeToRender->getParent();
-    m_impl->m_nodeToRender->m_pParent = this;
+    auto node = m_impl->m_nodeToRender.lock();
+    if (!node) return; 
+
+    auto parent = node->getParent();
+    node->m_pParent = this;
 
     GLint oldFBO;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &oldFBO);
@@ -215,13 +218,13 @@ void RenderNode::render() {
     kmGLPushMatrix();
     kmGLLoadIdentity();
 
-    auto anchor = m_impl->m_nodeToRender->isIgnoreAnchorPointForPosition() ? CCPoint{0,0} : m_impl->m_nodeToRender->getAnchorPointInPoints();
+    auto anchor = node->isIgnoreAnchorPointForPosition() ? CCPoint{0,0} : node->getAnchorPointInPoints();
 
     if (m_impl->m_constain) {
-        kmGLTranslatef(anchor.x - m_impl->m_nodeToRender->getPositionX(), anchor.y - m_impl->m_nodeToRender->getPositionY(), 0);
+        kmGLTranslatef(anchor.x - node->getPositionX(), anchor.y - node->getPositionY(), 0);
     }
 
-    m_impl->m_nodeToRender->visit();
+    node->visit();
 
     kmGLPopMatrix();
     kmGLMatrixMode(KM_GL_PROJECTION);
@@ -231,15 +234,18 @@ void RenderNode::render() {
     glBindFramebuffer(GL_FRAMEBUFFER, oldFBO);
     glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
 
-    if (parent) m_impl->m_nodeToRender->m_pParent = parent;
+    if (parent) node->m_pParent = parent;
 }
 
 void RenderNode::onEnter() {
     CCSprite::onEnter();
     schedule(schedule_selector(RenderNode::renderUpdate));
     
-    m_impl->m_children->addObject(m_impl->m_nodeToRender);
-    m_impl->m_nodeToRender->onEnter();
+    auto node = m_impl->m_nodeToRender.lock();
+    if (!node) return;
+
+    node->onEnter();
+    
     update(0);
 }
 
@@ -247,8 +253,10 @@ void RenderNode::onExit() {
     CCSprite::onExit();
     unschedule(schedule_selector(RenderNode::renderUpdate));
 
-    m_impl->m_children->removeAllObjects();
-    m_impl->m_nodeToRender->onExit();
+    auto node = m_impl->m_nodeToRender.lock();
+    if (!node) return;
+
+    node->onExit();
 }
 
 void RenderNode::renderUpdate(float dt) {
@@ -256,25 +264,42 @@ void RenderNode::renderUpdate(float dt) {
 }
 
 void RenderNode::addChild(cocos2d::CCNode* child, int zOrder, int tag) {
-    m_impl->m_nodeToRender->addChild(child, zOrder, tag);
+    auto node = m_impl->m_nodeToRender.lock();
+    if (!node) return;
+
+    node->addChild(child, zOrder, tag);
 }
 
 void RenderNode::removeChild(cocos2d::CCNode* child, bool cleanup) {
-    m_impl->m_nodeToRender->removeChild(child, cleanup);
+    auto node = m_impl->m_nodeToRender.lock();
+    if (!node) return;
+
+    node->removeChild(child, cleanup);
 }
 
 cocos2d::CCArray* RenderNode::getChildren() {
-    return m_impl->m_children;
+    auto node = m_impl->m_nodeToRender.lock();
+    auto arr = CCArray::create();
+
+    if (node) {
+        arr->addObject(node);
+    }
+
+    return arr;
 }
 
 unsigned int RenderNode::getChildrenCount() const {
-    return m_impl->m_children->count();
+    return 1;
 }
 
 void RenderNode::removeAllChildrenWithCleanup(bool cleanup) {
-    m_impl->m_nodeToRender->removeAllChildrenWithCleanup(cleanup);
+    auto node = m_impl->m_nodeToRender.lock();
+    if (!node) return;
+
+    node->removeAllChildrenWithCleanup(cleanup);
 }
 
 CCNode* RenderNode::getNode() {
-    return m_impl->m_nodeToRender;
+    auto node = m_impl->m_nodeToRender.lock();
+    return node;
 }

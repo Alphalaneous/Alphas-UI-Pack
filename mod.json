@@ -1,5 +1,5 @@
 {
-    "geode": "5.4.0",
+    "geode": "5.5.3",
     "gd": {
         "win": "2.2081",
         "android": "2.2081",
@@ -8,7 +8,7 @@
     },
     "id": "alphalaneous.alphas-ui-pack",
     "name": "Alpha's UI Pack",
-    "version": "v1.0.7",
+    "version": "v1.0.8",
     "developer": "Alphalaneous",
     "description": "Provides an APIs for new UI elements and tools",
     "early-load": true,
