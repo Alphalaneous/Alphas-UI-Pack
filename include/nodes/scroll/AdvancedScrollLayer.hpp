@@ -167,6 +167,10 @@ public:
     void allowZoom(bool allow);
     bool allowsZoom();
 
+    /// Delta configuration.
+    void setScrollDelta(float value);
+    float getScrollDelta();
+
     /// Allows clicks to pass through empty areas.
     void allowEmptyClickThrough(bool allow);
     bool allowsEmptyClickThrough();

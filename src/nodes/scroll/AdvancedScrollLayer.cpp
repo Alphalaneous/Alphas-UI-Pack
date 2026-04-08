@@ -34,6 +34,8 @@ struct AdvancedScrollLayer::Impl final {
     float m_minZoom = 0.5f;
     float m_maxZoom = 5.0f;
 
+    float m_scrollDelta = 0.5f;
+
     bool m_cullingEnabled = true;
     bool m_draggingEnabled = true;
     bool m_allowEmptyClickThrough = false;
@@ -440,7 +442,7 @@ void AdvancedScrollLayer::ccTouchMoved(CCTouch* touch, CCEvent* event) {
 
         m_impl->m_prevTouchLocation = touchLocation;
 
-        if (!m_impl->m_dragging && delta.getLength() > 0.5f) {
+        if (!m_impl->m_dragging && delta.getLength() > m_impl->m_scrollDelta) {
             m_impl->m_dragging = true;
             cancelChildrenTouches(touch, event);
             touch->m_point = CCPoint{FLT_MIN, FLT_MIN};
@@ -1074,6 +1076,14 @@ void AdvancedScrollLayer::allowZoom(bool allow) {
 
 bool AdvancedScrollLayer::allowsZoom() {
     return m_impl->m_allowsZoom;
+}
+
+void AdvancedScrollLayer::setScrollDelta(float value) {
+    m_impl->m_scrollDelta = value;
+}
+
+float AdvancedScrollLayer::getScrollDelta() {
+    return m_impl->m_scrollDelta;
 }
 
 void AdvancedScrollLayer::blockTouchBehind(bool blocked) {

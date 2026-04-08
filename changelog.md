@@ -1,3 +1,6 @@
+# 1.1.0
+- Add missing Scroll Delta getter and Setter
+
 # 1.0.8
 - RenderNode fixes
 
