@@ -1,3 +1,6 @@
+# 1.1.1
+- Switch to events for mouse buttons and scroll
+
 # 1.1.0
 - Add missing Scroll Delta getter and Setter
 

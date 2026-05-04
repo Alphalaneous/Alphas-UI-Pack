@@ -1119,7 +1119,7 @@ void AdvancedScrollLayer::setZoom(float zoom) {
     m_impl->m_contentContainer->setScale(std::clamp(zoom, m_impl->m_minZoom, m_impl->m_maxZoom));
 }
 
-$execute {
+$on_mod(Loaded) {
     devtools::waitForDevTools([] {
         AdvancedScrollLayer::registerDevTools();
     });

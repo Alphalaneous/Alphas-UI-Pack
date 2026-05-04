@@ -30,15 +30,45 @@ const std::vector<AdvancedScrollDelegate*>& ScrollDispatcher::getDelegates() {
     return m_impl->m_scrollDelegates;
 }
 
-#ifndef GEODE_IS_IOS
-#include <Geode/modify/CCMouseDispatcher.hpp>
-#include <Geode/modify/CCKeyboardDispatcher.hpp>
+#ifdef GEODE_IS_MACOS
+#include <CoreFoundation/CoreFoundation.h>
+bool isNaturalScrollEnabled() {
+    CFPropertyListRef value =
+        CFPreferencesCopyAppValue(
+            CFSTR("com.apple.swipescrolldirection"),
+            kCFPreferencesAnyApplication
+        );
 
-class $modify(ScrollCCMouseDispatcher, cocos2d::CCMouseDispatcher) {
-	bool dispatchScrollMSG(float y, float x) {
+    if (value && CFGetTypeID(value) == CFBooleanGetTypeID()) {
+        bool result = CFBooleanGetValue((CFBooleanRef)value);
+        CFRelease(value);
+        return result;
+    }
+
+    if (value) CFRelease(value);
+    return true;
+}
+#else
+bool isNaturalScrollEnabled() {
+    return false;
+}
+#endif
+
+$on_mod(Loaded) {
+    ScrollWheelEvent().listen([] (double x, double y) {
+        #ifdef GEODE_IS_MACOS
+        int naturalMult = isNaturalScrollEnabled() ? 1 : -1;
+        float xMult = 1 * naturalMult;
+        float yMult = 1 * naturalMult;
+        #else
+        float xMult = 1;
+        float yMult = -1;
+        #endif
+
+        float multiplier = 12;
+
         for (AdvancedScrollDelegate* scrollDelegate : ScrollDispatcher::get()->getDelegates()) {
             if (!alpha::utils::isPointInsideNode(typeinfo_cast<CCNode*>(scrollDelegate), getMousePos())) continue;
-
             bool shouldScroll = true;
 
             if (CCKeyboardDispatcher::get()->getControlKeyPressed() || CCKeyboardDispatcher::get()->getCommandKeyPressed()) {
@@ -51,34 +81,31 @@ class $modify(ScrollCCMouseDispatcher, cocos2d::CCMouseDispatcher) {
                     std::swap(x, y);
                 }
 
-                scrollDelegate->scroll(x, y);
+                scrollDelegate->scroll((x * multiplier) * xMult, (y * multiplier) * yMult);
             }
             break;
         }
-        return CCMouseDispatcher::dispatchScrollMSG(y, x);
-    }
-};
+    }).leak();
 
-class $modify(ScrollCCKeyboardDispatcher, cocos2d::CCKeyboardDispatcher) {
-	bool dispatchKeyboardMSG(cocos2d::enumKeyCodes key, bool isKeyDown, bool isKeyRepeat, double t) {
+    KeyboardInputEvent().listen([] (KeyboardInputData& data) {
+        bool repeat = data.action == KeyboardInputData::Action::Repeat;
+        bool down = data.action == geode::KeyboardInputData::Action::Press || repeat;
         for (AdvancedScrollDelegate* scrollDelegate : ScrollDispatcher::get()->getDelegates()) {
             if (!alpha::utils::isPointInsideNode(typeinfo_cast<CCNode*>(scrollDelegate), getMousePos())) continue;
 
             if (CCKeyboardDispatcher::get()->getControlKeyPressed() || CCKeyboardDispatcher::get()->getCommandKeyPressed()) {
-                if (isKeyDown) {
-                    if (key == enumKeyCodes::KEY_OEMEqual) {
+                if (down) {
+                    if (data.key == enumKeyCodes::KEY_OEMEqual) {
                         scrollDelegate->zoom(25);
                     }
-                    else if (key == enumKeyCodes::KEY_OEMMinus) {
+                    else if (data.key == enumKeyCodes::KEY_OEMMinus) {
                         scrollDelegate->zoom(-25);
                     }
                 }
             }
 
-            scrollDelegate->keyPress(key, isKeyDown, isKeyRepeat);
+            scrollDelegate->keyPress(data.key, down, repeat);
             break;
         }
-        return CCKeyboardDispatcher::dispatchKeyboardMSG(key, isKeyDown, isKeyRepeat, t);
-    }
-};
-#endif
+    }).leak();
+}

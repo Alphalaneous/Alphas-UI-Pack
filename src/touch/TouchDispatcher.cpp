@@ -1,15 +1,13 @@
+#include "touch/TouchDispatcher.hpp"
 #include <Geode/Geode.hpp>
 #include "API.hpp"
-
-#if defined(GEODE_IS_MACOS)
-#include <CoreGraphics/CGEventSource.h>
-#endif
 
 using namespace geode::prelude;
 using namespace alpha::prelude;
 
 struct TouchDispatcher::Impl final {
     std::unordered_map<MouseButton, bool> m_states;
+    std::unordered_map<MouseButton, bool> m_inputStates;
     std::unordered_map<MouseButton, Ref<TouchEvent>> m_clicks;
 
     CCPoint m_lastPos;
@@ -17,6 +15,8 @@ struct TouchDispatcher::Impl final {
 
 	CCTouchDispatcher* m_dispatcher;
 	Ref<TouchEvent> m_hoverTouch;
+
+    ListenerHandle m_touchListener;
 };
 
 TouchDispatcher::TouchDispatcher() : m_impl(std::make_unique<Impl>()) {}
@@ -35,6 +35,30 @@ TouchDispatcher* TouchDispatcher::get() {
 void TouchDispatcher::init() {
     m_impl->m_dispatcher = CCTouchDispatcher::get();
     m_impl->m_hoverTouch = TouchEvent::create(MouseButton::HOVER);
+
+    m_impl->m_touchListener = MouseInputEvent().listen([this] (geode::MouseInputData& data) {
+        bool pressed = data.action == geode::MouseInputData::Action::Press;
+
+        switch (data.button) {
+            case geode::MouseInputData::Button::Middle: {
+                m_impl->m_inputStates[MouseButton::MIDDLE] = pressed;
+                break;
+            }
+            case geode::MouseInputData::Button::Right: {
+                m_impl->m_inputStates[MouseButton::RIGHT] = pressed;
+                break;
+            }
+            case geode::MouseInputData::Button::Button4: {
+                m_impl->m_inputStates[MouseButton::BUTTON3] = pressed;
+                break;
+            }
+            case geode::MouseInputData::Button::Button5: {
+                m_impl->m_inputStates[MouseButton::BUTTON4] = pressed;
+                break;
+            }
+            default: break;
+        }
+    });
 }
 
 void TouchDispatcher::rearrangeHandlers() {
@@ -163,17 +187,10 @@ void TouchDispatcher::clicks(TouchEvent* touch, TouchType type) {
 void TouchDispatcher::pollInput(const CCPoint& pos) {
     auto origStates = m_impl->m_states;
 
-    #if defined(GEODE_IS_WINDOWS)
-    m_impl->m_states[MouseButton::MIDDLE]   = GetAsyncKeyState(VK_MBUTTON) & 0x8000;
-    m_impl->m_states[MouseButton::RIGHT]    = GetAsyncKeyState(VK_RBUTTON) & 0x8000;
-    m_impl->m_states[MouseButton::BUTTON3]  = GetAsyncKeyState(VK_XBUTTON1) & 0x8000;
-    m_impl->m_states[MouseButton::BUTTON4]  = GetAsyncKeyState(VK_XBUTTON2) & 0x8000;
-    #elif defined(GEODE_IS_MACOS)
-    m_impl->m_states[MouseButton::MIDDLE]   = CGEventSourceButtonState(kCGEventSourceStateHIDSystemState, kCGMouseButtonCenter);
-    m_impl->m_states[MouseButton::RIGHT]    = CGEventSourceButtonState(kCGEventSourceStateHIDSystemState, kCGMouseButtonRight);
-    m_impl->m_states[MouseButton::BUTTON3]  = CGEventSourceButtonState(kCGEventSourceStateHIDSystemState, (CGMouseButton)3);
-    m_impl->m_states[MouseButton::BUTTON4]  = CGEventSourceButtonState(kCGEventSourceStateHIDSystemState, (CGMouseButton)4);
-    #endif
+    m_impl->m_states[MouseButton::MIDDLE]   = m_impl->m_inputStates[MouseButton::MIDDLE];
+    m_impl->m_states[MouseButton::RIGHT]    = m_impl->m_inputStates[MouseButton::RIGHT];
+    m_impl->m_states[MouseButton::BUTTON3]  = m_impl->m_inputStates[MouseButton::BUTTON3];
+    m_impl->m_states[MouseButton::BUTTON4]  = m_impl->m_inputStates[MouseButton::BUTTON4];
 
     for (const auto& [button, state] : m_impl->m_states) {
         if (state != origStates[button]) {
@@ -223,6 +240,6 @@ void TouchDispatcher::update(float dt) {
     }
 }
 
-$execute {
+$on_mod(Loaded) {
 	CCScheduler::get()->scheduleUpdateForTarget(TouchDispatcher::get(), INT_MIN, false);
 }

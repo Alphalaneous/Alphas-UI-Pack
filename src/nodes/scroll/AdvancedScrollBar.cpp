@@ -729,7 +729,7 @@ float AdvancedScrollBar::getArrowButtonHeight() {
     return m_impl->m_style.m_arrowButtonHeight;
 }
 
-$execute {
+$on_mod(Loaded) {
     devtools::waitForDevTools([] {
         AdvancedScrollBar::registerDevTools();
     });
