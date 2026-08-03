@@ -1,3 +1,6 @@
+# 1.1.2
+- Revert scroll changes
+
 # 1.1.1
 - Switch to events for mouse buttons and scroll
 

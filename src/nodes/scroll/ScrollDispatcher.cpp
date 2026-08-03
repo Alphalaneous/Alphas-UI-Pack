@@ -30,45 +30,15 @@ const std::vector<AdvancedScrollDelegate*>& ScrollDispatcher::getDelegates() {
     return m_impl->m_scrollDelegates;
 }
 
-#ifdef GEODE_IS_MACOS
-#include <CoreFoundation/CoreFoundation.h>
-bool isNaturalScrollEnabled() {
-    CFPropertyListRef value =
-        CFPreferencesCopyAppValue(
-            CFSTR("com.apple.swipescrolldirection"),
-            kCFPreferencesAnyApplication
-        );
+#ifndef GEODE_IS_IOS
+#include <Geode/modify/CCMouseDispatcher.hpp>
+#include <Geode/modify/CCKeyboardDispatcher.hpp>
 
-    if (value && CFGetTypeID(value) == CFBooleanGetTypeID()) {
-        bool result = CFBooleanGetValue((CFBooleanRef)value);
-        CFRelease(value);
-        return result;
-    }
-
-    if (value) CFRelease(value);
-    return true;
-}
-#else
-bool isNaturalScrollEnabled() {
-    return false;
-}
-#endif
-
-$on_mod(Loaded) {
-    ScrollWheelEvent().listen([] (double x, double y) {
-        #ifdef GEODE_IS_MACOS
-        int naturalMult = isNaturalScrollEnabled() ? 1 : -1;
-        float xMult = 1 * naturalMult;
-        float yMult = 1 * naturalMult;
-        #else
-        float xMult = 1;
-        float yMult = -1;
-        #endif
-
-        float multiplier = 12;
-
+class $modify(ScrollCCMouseDispatcher, cocos2d::CCMouseDispatcher) {
+	bool dispatchScrollMSG(float y, float x) {
         for (AdvancedScrollDelegate* scrollDelegate : ScrollDispatcher::get()->getDelegates()) {
             if (!alpha::utils::isPointInsideNode(typeinfo_cast<CCNode*>(scrollDelegate), getMousePos())) continue;
+
             bool shouldScroll = true;
 
             if (CCKeyboardDispatcher::get()->getControlKeyPressed() || CCKeyboardDispatcher::get()->getCommandKeyPressed()) {
@@ -81,12 +51,16 @@ $on_mod(Loaded) {
                     std::swap(x, y);
                 }
 
-                scrollDelegate->scroll((x * multiplier) * xMult, (y * multiplier) * yMult);
+                scrollDelegate->scroll(x, y);
             }
             break;
         }
-    }).leak();
+        return CCMouseDispatcher::dispatchScrollMSG(y, x);
+    }
+};
+#endif
 
+$on_mod(Loaded) {
     KeyboardInputEvent().listen([] (KeyboardInputData& data) {
         bool repeat = data.action == KeyboardInputData::Action::Repeat;
         bool down = data.action == geode::KeyboardInputData::Action::Press || repeat;
