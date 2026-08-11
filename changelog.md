@@ -1,3 +1,7 @@
+# 1.2.0
+- Add force cull method
+- Add offsetScroll methods
+
 # 1.1.2
 - Revert scroll changes
 

@@ -385,7 +385,7 @@ void AdvancedScrollLayer::cancelChildrenTouches(CCTouch* touch, CCEvent* event) 
 bool AdvancedScrollLayer::ccTouchBegan(CCTouch* touch, CCEvent* event) {
     if (!nodeIsVisible(this)) return false;
     m_impl->m_activeTouches.push_back(touch);
-    m_impl->m_prevTouchLocation = touch->getLocation();
+    m_impl->m_prevTouchLocation = convertToNodeSpace(touch->getLocation());
 
     if (!alpha::utils::isPointInsideNode(m_impl->m_clickNode, touch->getLocation())) {
         setVisible(false);
@@ -436,11 +436,10 @@ void AdvancedScrollLayer::ccTouchMoved(CCTouch* touch, CCEvent* event) {
     //if (m_impl->m_activeTouches.size() == 1) {
         auto touchLocation = touch->getLocation();
 
-        CCPoint prev = convertToNodeSpace(m_impl->m_prevTouchLocation);
         CCPoint curr = convertToNodeSpace(touchLocation);
-        CCPoint delta = curr - prev;
+        CCPoint delta = curr - m_impl->m_prevTouchLocation;
 
-        m_impl->m_prevTouchLocation = touchLocation;
+        m_impl->m_prevTouchLocation = curr;
 
         if (!m_impl->m_dragging && delta.getLength() > m_impl->m_scrollDelta) {
             m_impl->m_dragging = true;
@@ -665,6 +664,42 @@ void AdvancedScrollLayer::setScrollY(float y, bool smooth) {
     update(0);
 }
 
+void AdvancedScrollLayer::offsetScrollX(float x) {
+    auto holding = m_impl->m_holding;
+    m_impl->m_holding = false;
+    offsetScroll(x, 0);
+    m_impl->m_holding = holding;
+}
+
+void AdvancedScrollLayer::offsetScrollY(float y) {
+    auto holding = m_impl->m_holding;
+    m_impl->m_holding = false;
+    offsetScroll(0, y);
+    m_impl->m_holding = holding;
+}
+
+void AdvancedScrollLayer::offsetScroll(float x, float y) {
+    if (!nodeIsVisible(this)) return;
+
+    m_impl->m_inertiaActive = false;
+    unschedule(schedule_selector(AdvancedScrollLayer::updateInertia));
+
+    stopAction(m_impl->m_verticalBack);
+    stopAction(m_impl->m_horizontalBack);
+    stopAction(m_impl->m_smoothScrollToX);
+    stopAction(m_impl->m_smoothScrollToY);
+
+    m_impl->m_verticalBack = nullptr;
+    m_impl->m_horizontalBack = nullptr;
+    m_impl->m_smoothScrollToX = nullptr;
+    m_impl->m_smoothScrollToY = nullptr;
+
+    if (m_impl->m_verticalScroll) m_impl->m_scrollPoint.y += y;
+    if (m_impl->m_horizontalScroll) m_impl->m_scrollPoint.x += x;
+
+    update(0);
+}
+
 CCPoint AdvancedScrollLayer::getScrollPoint() {
     return m_impl->m_scrollPoint;
 }
@@ -717,8 +752,12 @@ void AdvancedScrollLayer::constrain(bool skipInertiaCheck) {
 }
 
 void AdvancedScrollLayer::cull() {
-    if (!m_impl->m_cullingEnabled) return;
     if (m_impl->m_prevScrollPoint == m_impl->m_scrollPoint) return;
+    forceCull();
+}
+
+void AdvancedScrollLayer::forceCull() {
+    if (!m_impl->m_cullingEnabled) return;
     if (m_impl->m_cullingMethod) return m_impl->m_cullingMethod(m_impl->m_content, m_impl->m_scrollPoint);
 
     auto world = alpha::utils::rectToWorld(this);

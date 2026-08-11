@@ -91,6 +91,33 @@ public:
      */
     void setScrollY(float y, bool smooth = false);
 
+
+    /**
+     * @brief Offsets horizontal scroll position.
+     *
+     * @param x Target X offset.
+     */
+    void offsetScrollX(float x);
+
+    /**
+     * @brief Offsets vertical scroll position.
+     *
+     * @param y Target Y offset.
+     */
+    void offsetScrollY(float y);
+
+    /**
+     * @brief Offsets scroll position.
+     *
+     * @param y Target Y offset.
+     */
+    void offsetScroll(float x, float y);
+
+    /**
+     * @brief Forces scroll layer to cull.
+     */
+    void forceCull();
+
     /**
      * @brief Returns current scroll offset as a CCPoint.
      */
