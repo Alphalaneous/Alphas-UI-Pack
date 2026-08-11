@@ -1,3 +1,6 @@
+# 1.2.1
+- Whoops, broke inertia, now I fixed it!
+
 # 1.2.0
 - Add force cull method
 - Add offsetScroll methods

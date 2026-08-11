@@ -665,34 +665,15 @@ void AdvancedScrollLayer::setScrollY(float y, bool smooth) {
 }
 
 void AdvancedScrollLayer::offsetScrollX(float x) {
-    auto holding = m_impl->m_holding;
-    m_impl->m_holding = false;
     offsetScroll(x, 0);
-    m_impl->m_holding = holding;
 }
 
 void AdvancedScrollLayer::offsetScrollY(float y) {
-    auto holding = m_impl->m_holding;
-    m_impl->m_holding = false;
     offsetScroll(0, y);
-    m_impl->m_holding = holding;
 }
 
 void AdvancedScrollLayer::offsetScroll(float x, float y) {
     if (!nodeIsVisible(this)) return;
-
-    m_impl->m_inertiaActive = false;
-    unschedule(schedule_selector(AdvancedScrollLayer::updateInertia));
-
-    stopAction(m_impl->m_verticalBack);
-    stopAction(m_impl->m_horizontalBack);
-    stopAction(m_impl->m_smoothScrollToX);
-    stopAction(m_impl->m_smoothScrollToY);
-
-    m_impl->m_verticalBack = nullptr;
-    m_impl->m_horizontalBack = nullptr;
-    m_impl->m_smoothScrollToX = nullptr;
-    m_impl->m_smoothScrollToY = nullptr;
 
     if (m_impl->m_verticalScroll) m_impl->m_scrollPoint.y += y;
     if (m_impl->m_horizontalScroll) m_impl->m_scrollPoint.x += x;
