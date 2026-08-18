@@ -52,7 +52,7 @@ protected:
         m_fMaxS = contentSize.width / static_cast<float>(pixelsWidth);
         m_fMaxT = contentSize.height / static_cast<float>(pixelsHeight);
 
-        m_bHasPremultipliedAlpha = false;
+        m_bHasPremultipliedAlpha = true;
         m_bHasMipmaps = false;
 
         setShaderProgram(CCShaderCache::sharedShaderCache()->programForKey(kCCShader_PositionTexture));

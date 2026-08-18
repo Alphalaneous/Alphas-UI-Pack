@@ -1,3 +1,6 @@
+# 1.2.2
+- Fix Premultiplied Alpha being false and causing dark edges on rendered nodes
+
 # 1.2.1
 - Whoops, broke inertia, now I fixed it!
 
