@@ -6,29 +6,6 @@
 using namespace geode::prelude;
 using namespace alpha::prelude;
 
-// yoinked from devtools
-class $modify(GameToolbox) {
-    static void preVisitWithClippingRect(CCNode* node, CCRect clipRect) {
-        if (!node->isVisible()) return GameToolbox::preVisitWithClippingRect(node, clipRect);
-
-        glEnable(GL_SCISSOR_TEST);
-        clipRect.origin = node->convertToWorldSpace(clipRect.origin);
-        kmMat4 mat;
-
-        kmGLGetMatrix(KM_GL_PROJECTION, &mat);
-        if (mat.mat[5] < 0) {
-            auto ws = CCDirector::get()->getWinSize();
-            clipRect.origin.y = ws.height - (clipRect.origin.y + node->getContentSize().height);
-        }
-        CCEGLView::get()->setScissorInPoints(
-            clipRect.origin.x,
-            clipRect.origin.y,
-            clipRect.size.width,
-            clipRect.size.height
-        );
-    }
-};
-
 class CCTexture2DExt : public CCTexture2D {
 public:
     static CCTexture2DExt* create(GLuint name, GLsizei pixelsWidth, GLsizei pixelsHeight, const CCSize& contentSize) {
@@ -61,7 +38,8 @@ protected:
 };
 
 struct RenderNode::Impl final {
-    WeakRef<cocos2d::CCNode> m_nodeToRender;
+    Ref<cocos2d::CCNode> m_nodeToRender;
+    Ref<CCArray> m_children;
     GLuint m_fbo = 0;
     GLuint m_texture = 0;
     int m_texWidth = 0;
@@ -73,7 +51,7 @@ RenderNode::RenderNode() : m_impl(std::make_unique<Impl>()) {}
 
 RenderNode::~RenderNode() {
     if (m_impl->m_fbo) glDeleteFramebuffers(1, &m_impl->m_fbo);
-    if (m_impl->m_texture) glDeleteTextures(1, &m_impl->m_texture);
+    // CCTexture2D will delete the texture for me
 }
 
 RenderNode* RenderNode::create(CCNode* node, bool constrain) {
@@ -92,8 +70,7 @@ bool RenderNode::init(CCNode* node, bool constrain) {
     CCSprite::init();
 
     m_impl->m_constain = constrain;
-
-    unscheduleUpdate();
+    m_impl->m_children = CCArray::createWithObject(node);
 
     if (constrain) {
         setPosition(node->getPosition());
@@ -128,18 +105,16 @@ bool RenderNode::init(CCNode* node, bool constrain) {
 
 void RenderNode::initFBO() {
 
-    auto node = m_impl->m_nodeToRender.lock();
-    if (!node) return; 
-
     GLint viewport[4];
     glGetIntegerv(GL_VIEWPORT, viewport);
     auto winSize = CCDirector::get()->getWinSize();
 
     auto scale = CCDirector::get()->getContentScaleFactor();
+    auto size = m_impl->m_nodeToRender->boundingBox().size;
 
     if (m_impl->m_constain) {
-        m_impl->m_texWidth = node->getContentSize().width * scale;
-        m_impl->m_texHeight = node->getContentSize().height * scale;
+        m_impl->m_texWidth = size.width * scale;
+        m_impl->m_texHeight = size.height * scale;
     } else {
         m_impl->m_texWidth = winSize.width * scale;
         m_impl->m_texHeight = winSize.height * scale;
@@ -169,7 +144,7 @@ void RenderNode::initFBO() {
 
     if (m_impl->m_constain) {
         setTextureRect({0, 0, m_impl->m_texWidth / scale, m_impl->m_texHeight / scale});
-        setContentSize(node->getContentSize());
+        setContentSize(size);
     } else {
         auto winSize = CCDirector::get()->getWinSize();
         setTextureRect({0, 0, winSize.width, winSize.height});
@@ -177,14 +152,18 @@ void RenderNode::initFBO() {
     }
 }
 
-void RenderNode::render() {
+void RenderNode::resetFBO() {
+    if (m_impl->m_fbo) glDeleteFramebuffers(1, &m_impl->m_fbo);
+    m_impl->m_fbo = 0;
+
+    initFBO();
+}
+
+void RenderNode::visit() {
     if (!m_impl->m_fbo) initFBO();
 
-    auto node = m_impl->m_nodeToRender.lock();
-    if (!node) return; 
-
-    auto parent = node->getParent();
-    node->m_pParent = this;
+    auto parent = m_impl->m_nodeToRender->getParent();
+    m_impl->m_nodeToRender->m_pParent = this;
 
     GLint oldFBO;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &oldFBO);
@@ -218,13 +197,13 @@ void RenderNode::render() {
     kmGLPushMatrix();
     kmGLLoadIdentity();
 
-    auto anchor = node->isIgnoreAnchorPointForPosition() ? CCPoint{0,0} : node->getAnchorPointInPoints();
+    auto anchor = m_impl->m_nodeToRender->isIgnoreAnchorPointForPosition() ? CCPoint{0,0} : m_impl->m_nodeToRender->getAnchorPointInPoints();
 
     if (m_impl->m_constain) {
-        kmGLTranslatef(anchor.x - node->getPositionX(), anchor.y - node->getPositionY(), 0);
+        kmGLTranslatef(anchor.x - m_impl->m_nodeToRender->getPositionX(), anchor.y - m_impl->m_nodeToRender->getPositionY(), 0);
     }
 
-    node->visit();
+    m_impl->m_nodeToRender->visit();
 
     kmGLPopMatrix();
     kmGLMatrixMode(KM_GL_PROJECTION);
@@ -234,72 +213,31 @@ void RenderNode::render() {
     glBindFramebuffer(GL_FRAMEBUFFER, oldFBO);
     glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
 
-    if (parent) node->m_pParent = parent;
+    if (parent) m_impl->m_nodeToRender->m_pParent = parent;
+
+    CCSprite::visit();
 }
 
 void RenderNode::onEnter() {
     CCSprite::onEnter();
-    schedule(schedule_selector(RenderNode::renderUpdate));
     
-    auto node = m_impl->m_nodeToRender.lock();
-    if (!node) return;
-
-    node->onEnter();
-    
-    update(0);
+    m_impl->m_nodeToRender->onEnter();
 }
 
 void RenderNode::onExit() {
     CCSprite::onExit();
-    unschedule(schedule_selector(RenderNode::renderUpdate));
 
-    auto node = m_impl->m_nodeToRender.lock();
-    if (!node) return;
-
-    node->onExit();
-}
-
-void RenderNode::renderUpdate(float dt) {
-    render();
-}
-
-void RenderNode::addChild(cocos2d::CCNode* child, int zOrder, int tag) {
-    auto node = m_impl->m_nodeToRender.lock();
-    if (!node) return;
-
-    node->addChild(child, zOrder, tag);
-}
-
-void RenderNode::removeChild(cocos2d::CCNode* child, bool cleanup) {
-    auto node = m_impl->m_nodeToRender.lock();
-    if (!node) return;
-
-    node->removeChild(child, cleanup);
+    m_impl->m_nodeToRender->onExit();
 }
 
 cocos2d::CCArray* RenderNode::getChildren() {
-    auto node = m_impl->m_nodeToRender.lock();
-    auto arr = CCArray::create();
-
-    if (node) {
-        arr->addObject(node);
-    }
-
-    return arr;
+    return m_impl->m_children;
 }
 
 unsigned int RenderNode::getChildrenCount() const {
     return 1;
 }
 
-void RenderNode::removeAllChildrenWithCleanup(bool cleanup) {
-    auto node = m_impl->m_nodeToRender.lock();
-    if (!node) return;
-
-    node->removeAllChildrenWithCleanup(cleanup);
-}
-
 CCNode* RenderNode::getNode() {
-    auto node = m_impl->m_nodeToRender.lock();
-    return node;
+    return m_impl->m_nodeToRender;
 }

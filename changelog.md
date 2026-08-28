@@ -1,3 +1,9 @@
+# 1.3.0
+- Add resetFBO method to RenderNode
+- Fix some RenderNode bugs
+- Fix culling being late by a frame when dragging
+- Fix crashes with QOLMod when scrolling and a RenderNode is on screen
+
 # 1.2.2
 - Fix Premultiplied Alpha being false and causing dark edges on rendered nodes
 

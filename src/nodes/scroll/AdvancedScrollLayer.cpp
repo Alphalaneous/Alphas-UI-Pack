@@ -151,7 +151,7 @@ bool AdvancedScrollLayer::init(const CCSize& size, CullingMethod cullingMethod) 
 
     m_impl->m_content = ScrollContent::create(this);
     m_impl->m_content->setContentSize(size);
-
+    
     m_impl->m_cullingMethod = std::move(cullingMethod);
 
     setUserFlag("alk.better-touch-prio/steals-touch");
@@ -160,6 +160,7 @@ bool AdvancedScrollLayer::init(const CCSize& size, CullingMethod cullingMethod) 
     ignoreAnchorPointForPosition(false);
 
     m_impl->m_contentArr = CCArray::create();
+    m_impl->m_contentArr->addObject(m_impl->m_content);
 
     m_impl->m_contentContainer = CCNode::create();
     m_impl->m_contentContainer->setAnchorPoint({0.f, 1.f});
@@ -261,8 +262,6 @@ void AdvancedScrollLayer::onEnter() {
     CCTouchDispatcher::get()->addTargetedDelegate(this, getTouchPriority(), false);
     ScrollDispatcher::get()->registerScroll(this);
 
-    m_impl->m_contentArr->addObject(m_impl->m_content);
-
     runAction(CallFuncExt::create([this] {
         m_impl->m_prevScrollPoint = CCPoint{FLT_MIN, FLT_MIN};
     }));
@@ -277,8 +276,6 @@ void AdvancedScrollLayer::onExit() {
     CCNode::onExit();
     CCTouchDispatcher::get()->removeDelegate(this);
     ScrollDispatcher::get()->unregisterScroll(this);
-
-    m_impl->m_contentArr->removeAllObjects();
 }
 
 // We don't actually want AdvancedScrollLayer to have any "real" children for the sake of simplicity.
@@ -421,55 +418,43 @@ bool AdvancedScrollLayer::ccTouchBegan(CCTouch* touch, CCEvent* event) {
 void AdvancedScrollLayer::ccTouchMoved(CCTouch* touch, CCEvent* event) {
     if (!m_impl->m_draggingEnabled || !nodeIsVisible(this)) return;
 
-    /*if (m_impl->m_activeTouches.size() == 2 && m_impl->m_allowsZoom) {
-        CCTouch* t1 = m_impl->m_activeTouches[0];
-        CCTouch* t2 = m_impl->m_activeTouches[1];
+    auto touchLocation = touch->getLocation();
 
-        auto prevDist = (t1->getPreviousLocation() - t2->getPreviousLocation()).getLength();
-        auto currDist = (t1->getLocation() - t2->getLocation()).getLength();
+    CCPoint curr = convertToNodeSpace(touchLocation);
+    CCPoint delta = curr - m_impl->m_prevTouchLocation;
 
-        float zoomDelta = currDist - prevDist;
-        zoom(zoomDelta);
-        return;
-    }*/
+    m_impl->m_prevTouchLocation = curr;
 
-    //if (m_impl->m_activeTouches.size() == 1) {
-        auto touchLocation = touch->getLocation();
+    if (!m_impl->m_dragging && delta.getLength() > m_impl->m_scrollDelta) {
+        m_impl->m_dragging = true;
+        cancelChildrenTouches(touch, event);
+        touch->m_point = CCPoint{FLT_MIN, FLT_MIN};
+    }
 
-        CCPoint curr = convertToNodeSpace(touchLocation);
-        CCPoint delta = curr - m_impl->m_prevTouchLocation;
+    if (m_impl->m_dragging) {
+        touch->m_point = CCPoint{FLT_MIN, FLT_MIN};
 
-        m_impl->m_prevTouchLocation = curr;
+        CCPoint pos = m_impl->m_contentContainer->getPosition(); 
+        if (m_impl->m_horizontalScroll) pos.x += delta.x; 
+        if (m_impl->m_verticalScroll) pos.y += delta.y; 
 
-        if (!m_impl->m_dragging && delta.getLength() > m_impl->m_scrollDelta) {
-            m_impl->m_dragging = true;
-            cancelChildrenTouches(touch, event);
-            touch->m_point = CCPoint{FLT_MIN, FLT_MIN};
+        float minX = getContentWidth() - m_impl->m_contentContainer->getScaledContentWidth() - m_impl->m_overshoot; 
+        float maxX = m_impl->m_overshoot; 
+        float minY = getContentHeight() - m_impl->m_overshoot; 
+        float maxY = m_impl->m_contentContainer->getScaledContentHeight() + m_impl->m_overshoot; 
+
+        pos.x = std::clamp(pos.x, minX, maxX); 
+        pos.y = std::clamp(pos.y, minY, maxY); 
+
+        m_impl->m_contentContainer->setPosition(pos);
+
+        m_impl->m_samples.push_back({touchLocation, alpha::utils::nowSeconds()});
+        if (m_impl->m_samples.size() > 3) {
+            m_impl->m_samples.erase(m_impl->m_samples.begin());
         }
 
-        if (m_impl->m_dragging) {
-            touch->m_point = CCPoint{FLT_MIN, FLT_MIN};
-
-            CCPoint pos = m_impl->m_contentContainer->getPosition(); 
-            if (m_impl->m_horizontalScroll) pos.x += delta.x; 
-            if (m_impl->m_verticalScroll) pos.y += delta.y; 
-
-            float minX = getContentWidth() - m_impl->m_contentContainer->getScaledContentWidth() - m_impl->m_overshoot; 
-            float maxX = m_impl->m_overshoot; 
-            float minY = getContentHeight() - m_impl->m_overshoot; 
-            float maxY = m_impl->m_contentContainer->getScaledContentHeight() + m_impl->m_overshoot; 
-
-            pos.x = std::clamp(pos.x, minX, maxX); 
-            pos.y = std::clamp(pos.y, minY, maxY); 
-
-            m_impl->m_contentContainer->setPosition(pos);
-
-            m_impl->m_samples.push_back({touchLocation, alpha::utils::nowSeconds()});
-            if (m_impl->m_samples.size() > 3) {
-                m_impl->m_samples.erase(m_impl->m_samples.begin());
-            }
-        }
-    //}
+        cull();
+    }
 }
 
 void AdvancedScrollLayer::ccTouchEnded(CCTouch* touch, CCEvent* event) {
@@ -614,6 +599,7 @@ void AdvancedScrollLayer::updateInertia(float dt) {
         if (std::abs(m_impl->m_velocity.y) < 0.1f) m_impl->m_velocity.y = 0;
         if (!verticalBackActive) m_impl->m_contentContainer->setPositionY(pos.y);
     }
+    cull();
 
     if (!shouldWait) {
 
@@ -729,6 +715,7 @@ void AdvancedScrollLayer::constrain(bool skipInertiaCheck) {
 
     if (outside) {
         m_impl->m_contentContainer->setPosition({-m_impl->m_scrollPoint.x, getContentHeight() + m_impl->m_scrollPoint.y});
+        cull();
     }
 }
 
