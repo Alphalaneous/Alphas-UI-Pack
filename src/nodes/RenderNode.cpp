@@ -1,6 +1,5 @@
+#include "nodes/RenderNode.hpp"
 #include <Geode/Geode.hpp>
-#include <Geode/modify/CCNode.hpp>
-#include <Geode/modify/GameToolbox.hpp>
 #include "API.hpp"
 
 using namespace geode::prelude;
@@ -38,7 +37,7 @@ protected:
 };
 
 struct RenderNode::Impl final {
-    Ref<cocos2d::CCNode> m_nodeToRender;
+    cocos2d::CCNode* m_nodeToRender;
     Ref<CCArray> m_children;
     GLuint m_fbo = 0;
     GLuint m_texture = 0;
@@ -159,7 +158,7 @@ void RenderNode::resetFBO() {
     initFBO();
 }
 
-void RenderNode::visit() {
+void RenderNode::render() {
     if (!m_impl->m_fbo) initFBO();
 
     auto parent = m_impl->m_nodeToRender->getParent();
@@ -214,7 +213,10 @@ void RenderNode::visit() {
     glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
 
     if (parent) m_impl->m_nodeToRender->m_pParent = parent;
+}
 
+void RenderNode::visit() {
+    render();
     CCSprite::visit();
 }
 
@@ -240,4 +242,16 @@ unsigned int RenderNode::getChildrenCount() const {
 
 CCNode* RenderNode::getNode() {
     return m_impl->m_nodeToRender;
+}
+
+void RenderNode::addChild(cocos2d::CCNode* child, int zOrder, int tag) {
+    CCSprite::addChild(child, zOrder, tag);
+}
+
+void RenderNode::removeChild(cocos2d::CCNode* child, bool cleanup) {
+    CCSprite::removeChild(child, cleanup);
+}
+
+void RenderNode::removeAllChildrenWithCleanup(bool cleanup) {
+    CCSprite::removeAllChildrenWithCleanup(cleanup);
 }

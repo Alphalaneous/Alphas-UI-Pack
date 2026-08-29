@@ -62,6 +62,11 @@ public:
     void initFBO();
 
     /**
+     * @brief Renders the wrapped node to the framebuffer.
+     */
+    void render();
+
+    /**
      * @brief Resets the framebuffer object.
      */
     void resetFBO();
@@ -88,6 +93,9 @@ public:
      */
     virtual void onExit() override;
 
+    virtual void addChild(cocos2d::CCNode* child, int zOrder, int tag) override;
+    virtual void removeChild(cocos2d::CCNode* child, bool cleanup) override;
+
     /**
      * @brief Returns all child nodes.
      *
@@ -101,6 +109,8 @@ public:
      * @return Number of children.
      */
     virtual unsigned int getChildrenCount() const override;
+
+    virtual void removeAllChildrenWithCleanup(bool cleanup) override;
 
     /**
      * @brief Returns the wrapped node.

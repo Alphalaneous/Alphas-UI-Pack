@@ -1,3 +1,6 @@
+# 1.3.1
+- Fix ABI
+
 # 1.3.0
 - Add resetFBO method to RenderNode
 - Fix some RenderNode bugs
