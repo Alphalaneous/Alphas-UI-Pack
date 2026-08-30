@@ -1,3 +1,6 @@
+# 1.3.2
+- Move render out of visit
+
 # 1.3.1
 - Fix ABI
 

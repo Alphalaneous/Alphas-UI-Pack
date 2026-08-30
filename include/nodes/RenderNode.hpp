@@ -72,7 +72,7 @@ public:
     void resetFBO();
 
     /**
-     * @brief Visits and renders the wrapped node to the framebuffer.
+     * @brief Visits the node.
      */
     void visit() override;
 
@@ -120,6 +120,7 @@ public:
     CCNode* getNode();
 
 protected:
+
     /// Internal implementation details.
     struct Impl;
     std::unique_ptr<Impl> m_impl; 

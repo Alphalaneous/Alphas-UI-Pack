@@ -99,6 +99,9 @@ bool RenderNode::init(CCNode* node, bool constrain) {
 
     if (!node->getParent()) node->m_pParent = this; 
 
+    schedule(schedule_selector(RenderNode::renderUpdate));
+    render();
+
     return true;
 }
 
@@ -216,8 +219,11 @@ void RenderNode::render() {
 }
 
 void RenderNode::visit() {
-    render();
     CCSprite::visit();
+}
+
+void RenderNode::renderUpdate(float dt) {
+    render();
 }
 
 void RenderNode::onEnter() {
