@@ -146,7 +146,7 @@ void RenderNode::initFBO() {
     glGenRenderbuffers(1, &m_impl->m_rbo);
     glBindRenderbuffer(GL_RENDERBUFFER, m_impl->m_rbo);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, m_impl->m_texWidth, m_impl->m_texHeight);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_impl->m_rbo);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, 0x821A, GL_RENDERBUFFER, m_impl->m_rbo);
 
     glBindFramebuffer(GL_FRAMEBUFFER, prevFbo);
     glBindFramebuffer(GL_RENDERBUFFER, prevRbo);

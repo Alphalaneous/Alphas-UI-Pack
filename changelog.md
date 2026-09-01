@@ -1,3 +1,6 @@
+# 1.3.3
+- Clipping Node fix (Thanks Undefined)
+
 # 1.3.2
 - Move render out of visit
 
