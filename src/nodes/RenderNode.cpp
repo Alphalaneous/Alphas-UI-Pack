@@ -40,6 +40,7 @@ struct RenderNode::Impl final {
     cocos2d::CCNode* m_nodeToRender;
     Ref<CCArray> m_children;
     GLuint m_fbo = 0;
+    GLuint m_rbo = 0;
     GLuint m_texture = 0;
     int m_texWidth = 0;
     int m_texHeight = 0;
@@ -50,6 +51,7 @@ RenderNode::RenderNode() : m_impl(std::make_unique<Impl>()) {}
 
 RenderNode::~RenderNode() {
     if (m_impl->m_fbo) glDeleteFramebuffers(1, &m_impl->m_fbo);
+    if (m_impl->m_rbo) glDeleteRenderbuffers(1, &m_impl->m_rbo);
     // CCTexture2D will delete the texture for me
 }
 
@@ -97,7 +99,7 @@ bool RenderNode::init(CCNode* node, bool constrain) {
 
     m_impl->m_nodeToRender = node;
 
-    if (!node->getParent()) node->m_pParent = this; 
+    if (!node->getParent()) node->m_pParent = this;
 
     schedule(schedule_selector(RenderNode::renderUpdate));
     render();
@@ -133,12 +135,21 @@ void RenderNode::initFBO() {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     GLint prevFbo = 0;
+    GLint prevRbo = 0;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFbo);
+    glGetIntegerv(GL_RENDERBUFFER_BINDING, &prevRbo);
 
     glGenFramebuffers(1, &m_impl->m_fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, m_impl->m_fbo);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_impl->m_texture, 0);
+
+    glGenRenderbuffers(1, &m_impl->m_rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, m_impl->m_rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, m_impl->m_texWidth, m_impl->m_texHeight);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_impl->m_rbo);
+
     glBindFramebuffer(GL_FRAMEBUFFER, prevFbo);
+    glBindFramebuffer(GL_RENDERBUFFER, prevRbo);
 
     auto texObj = CCTexture2DExt::create(m_impl->m_texture, m_impl->m_texWidth, m_impl->m_texHeight, CCSize(m_impl->m_texWidth / scale, m_impl->m_texHeight / scale));
 
@@ -156,7 +167,9 @@ void RenderNode::initFBO() {
 
 void RenderNode::resetFBO() {
     if (m_impl->m_fbo) glDeleteFramebuffers(1, &m_impl->m_fbo);
+    if (m_impl->m_rbo) glDeleteRenderbuffers(1, &m_impl->m_rbo);
     m_impl->m_fbo = 0;
+    m_impl->m_rbo = 0;
 
     initFBO();
 }
@@ -167,8 +180,10 @@ void RenderNode::render() {
     auto parent = m_impl->m_nodeToRender->getParent();
     m_impl->m_nodeToRender->m_pParent = this;
 
-    GLint oldFBO;
+    GLint oldFBO = 0;
+    GLint oldRBO = 0;
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, &oldFBO);
+    glGetIntegerv(GL_RENDERBUFFER_BINDING, &oldRBO);
 
     GLint viewport[4];
     glGetIntegerv(GL_VIEWPORT, viewport);
@@ -213,6 +228,7 @@ void RenderNode::render() {
     kmGLMatrixMode(KM_GL_MODELVIEW);
 
     glBindFramebuffer(GL_FRAMEBUFFER, oldFBO);
+    glBindFramebuffer(GL_RENDERBUFFER, oldRBO);
     glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
 
     if (parent) m_impl->m_nodeToRender->m_pParent = parent;
@@ -228,7 +244,7 @@ void RenderNode::renderUpdate(float dt) {
 
 void RenderNode::onEnter() {
     CCSprite::onEnter();
-    
+
     m_impl->m_nodeToRender->onEnter();
 }
 
