@@ -1,3 +1,6 @@
+# 1.3.4
+- Remove fix for iOS only for now
+
 # 1.3.3
 - Clipping Node fix (Thanks Undefined)
 
