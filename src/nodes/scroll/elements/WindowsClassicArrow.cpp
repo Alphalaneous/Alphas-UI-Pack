@@ -29,9 +29,11 @@ bool WindowsClassicArrow::init() {
     m_impl->m_arrow = CCSprite::createWithSpriteFrameName("colorSpike_01_color_001.png");
     m_impl->m_arrow->setColor({0, 0, 0});
     m_impl->m_arrow->setZOrder(1);
+    m_impl->m_arrow->setID("arrow-sprite"_spr);
 
     m_impl->m_background = geode::NineSlice::create("WindowsClassic.png"_spr);
     m_impl->m_background->setScale(0.5f);
+    m_impl->m_background->setID("background"_spr);
 
     setContentHeight(10.f);
 

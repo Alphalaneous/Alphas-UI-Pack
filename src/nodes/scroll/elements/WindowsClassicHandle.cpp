@@ -26,6 +26,7 @@ bool WindowsClassicHandle::init() {
 
     m_impl->m_background = geode::NineSlice::create("WindowsClassic.png"_spr);
     m_impl->m_background->setScale(0.5f);
+    m_impl->m_background->setID("background"_spr);
 
     addChild(m_impl->m_background);
 

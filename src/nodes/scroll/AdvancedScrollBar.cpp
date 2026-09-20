@@ -266,11 +266,11 @@ void AdvancedScrollBar::handleScroll(float y, bool smooth) {
     float topOffset = m_impl->m_style.m_showArrowButtons ? m_impl->m_upArrow->getContentHeight() : 0.f;
 
     float min = m_impl->m_handle->getContentHeight()/2 + m_impl->m_style.m_padding.bottom + m_impl->m_style.m_margins.bottom + bottomOffset;
-    float max = getContentHeight() - m_impl->m_handle->getContentHeight()/2 - (m_impl->m_style.m_padding.top + m_impl->m_style.m_margins.top + topOffset);
+    float max = getContentHeight() - m_impl->m_handle->getContentHeight() / 2.f - (m_impl->m_style.m_padding.top + m_impl->m_style.m_margins.top + topOffset);
     
     float clamp = std::clamp(y, min, max);
 
-    float percent = 1 - (clamp - min) / (max - min);
+    float percent = 1 - (clamp - min) / std::max((max - min), 0.001f);
  
     if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
         float pos = m_impl->m_scrollLayer->getVerticalMax() * percent;
@@ -629,6 +629,7 @@ void AdvancedScrollBar::setTrack(ScrollBarElement* track) {
     }
     track->setScrollBar(this);
     track->setAnchorPoint({0.f, 0.f});
+    track->setID("track"_spr);
     addChild(track);
 
     m_impl->m_track = track;
@@ -644,6 +645,7 @@ void AdvancedScrollBar::setHandle(ScrollBarElement* handle) {
     handle->setScrollBar(this);
     handle->setZOrder(1);
     handle->setAnchorPoint({0.f, 1.f});
+    handle->setID("handle"_spr);
     addChild(handle);
 
     m_impl->m_handle = handle;
@@ -684,6 +686,7 @@ void AdvancedScrollBar::setUpArrow(ScrollArrowElement* upArrow) {
     upArrow->setZOrder(1);
     upArrow->setAnchorPoint({0.f, 1.f});
     upArrow->setDirection(ArrowDirection::UP);
+    upArrow->setID("up-arrow"_spr);
     addChild(upArrow);
 
     m_impl->m_upArrow = upArrow;
@@ -700,6 +703,7 @@ void AdvancedScrollBar::setDownArrow(ScrollArrowElement* downArrow) {
     downArrow->setZOrder(1);
     downArrow->setAnchorPoint({0.f, 0.f});
     downArrow->setDirection(ArrowDirection::DOWN);
+    downArrow->setID("down-arrow"_spr);
     addChild(downArrow);
 
     m_impl->m_downArrow = downArrow;

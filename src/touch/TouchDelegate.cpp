@@ -7,14 +7,13 @@ using namespace alpha::prelude;
 bool TouchDelegate::ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
     auto mouseEvent = TouchEvent::create(MouseButton::TOUCH);
     if (auto node = typeinfo_cast<CCNode*>(this)) {
-        if (auto scrollLayer = static_cast<CCNode*>(node->getUserObject("scroll-layer"_spr))) {
+        if (auto scrollLayer = node->getParentByType<AdvancedScrollLayer>()) {
             bool insideScroll = alpha::utils::isPointInsideNode(scrollLayer, touch->getLocation());
             bool insideNode = alpha::utils::isPointInsideNode(node, touch->getLocation());
 
             if (!insideScroll || !insideNode) return false;
         }
     }
-    
     mouseEvent->setTouchInfo(touch->getLocation());
     return clickBegan(mouseEvent);
 }

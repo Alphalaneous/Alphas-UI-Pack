@@ -4,7 +4,7 @@
 bool alpha::utils::isPointInsideNode(cocos2d::CCNode* node, const cocos2d::CCPoint& touch) {
     if (!node) return false;
 
-    cocos2d::CCPoint local = node->convertToNodeSpace(touch);
+    auto local = node->convertToNodeSpace(touch);
     auto rect = cocos2d::CCRect(0, 0, node->getContentWidth(), node->getContentHeight());
 
     return rect.containsPoint(local);

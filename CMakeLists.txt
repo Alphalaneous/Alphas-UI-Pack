@@ -47,4 +47,18 @@ endif()
 
 add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode)
 
+CPMAddPackage("gh:richgel999/miniz#c883286")
+CPMAddPackage(
+    NAME spng
+    GITHUB_REPOSITORY "randy408/libspng"
+    GIT_TAG "adc9439"
+    DOWNLOAD_ONLY ON
+)
+add_library(spng STATIC ${spng_SOURCE_DIR}/spng/spng.c)
+target_include_directories(spng PUBLIC ${spng_SOURCE_DIR}/spng)
+target_compile_definitions(spng PUBLIC SPNG_STATIC SPNG_USE_MINIZ)
+
+target_link_libraries(spng PUBLIC miniz)
+target_link_libraries(${PROJECT_NAME} spng)
+
 setup_geode_mod(${PROJECT_NAME})

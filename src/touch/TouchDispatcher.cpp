@@ -72,22 +72,30 @@ void TouchDispatcher::rearrangeHandlers() {
 }
 
 void TouchDispatcher::hovers(TouchEvent* touch) {
+    if (!touch) return;
+    
     bool hoverClaimed = false;
 
     for (auto handler : CCArrayExt<CCTargetedTouchHandler*>(m_impl->m_dispatcher->m_pTargetedHandlers)) {
+        if (!handler) continue;
+        
         auto node = typeinfo_cast<CCNode*>(handler->getDelegate());
         if (!node) continue;
 
         const CCPoint location = touch->getLocation();
 
         bool inside = alpha::utils::isPointInsideNode(node, location);
+        auto scrollLayer = node->getParentByType<AdvancedScrollLayer>();
 
-        if (auto scrollLayer = static_cast<CCNode*>(node->getUserObject("scroll-layer"_spr))) {
+        if (scrollLayer) {
             inside = alpha::utils::isPointInsideNode(scrollLayer, location) && inside;
         }
 
         const bool swallows = handler->m_bSwallowsTouches;
-        auto claimed = handler->getClaimedTouches();
+        auto claimed = handler->m_pClaimedTouches;
+        if (!claimed) {
+            claimed = handler->m_pClaimedTouches = CCSet::create();
+        }
 
         auto delegate = typeinfo_cast<TouchDelegate*>(handler->getDelegate());
         if (!delegate) {
@@ -98,7 +106,7 @@ void TouchDispatcher::hovers(TouchEvent* touch) {
         }
 
         bool entered = inside && !hoverClaimed;
-        bool isClaimed = claimed->containsObject(touch);
+        bool isClaimed = claimed->containsObject(touch) && nodeIsVisible(node);
 
         if (entered && !isClaimed) {
             isClaimed = delegate->mouseEntered(touch);
@@ -148,20 +156,25 @@ void TouchDispatcher::clicks(TouchEvent* touch, TouchType type) {
         }
 
         if (node) {
-            if (auto scrollLayer = static_cast<CCNode*>(node->getUserObject("scroll-layer"_spr))) {
+            if (auto scrollLayer = node->getParentByType<AdvancedScrollLayer>()) {
                 bool inside = alpha::utils::isPointInsideNode(scrollLayer, location) && insideNode;
                 if (!inside) continue;
             }
+        }
+
+        auto claimed = handler->m_pClaimedTouches;
+        if (!claimed) {
+            claimed = handler->m_pClaimedTouches = CCSet::create();
         }
 
         if (type == TouchType::CLICK_BEGAN && !clickBlocked) {
             touchClaimed = delegate->clickBegan(touch);
 
             if (touchClaimed) {
-                handler->getClaimedTouches()->addObject(touch);
+                claimed->addObject(touch);
             }
         }
-        else if (handler->getClaimedTouches()->containsObject(touch)) {
+        else if (claimed->containsObject(touch)) {
             touchClaimed = true;
 
             switch (type) {

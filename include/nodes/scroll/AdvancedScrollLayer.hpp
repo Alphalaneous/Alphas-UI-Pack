@@ -160,6 +160,10 @@ public:
     void setDraggingEnabled(bool value);
     bool isDraggingEnabled();
 
+    /// Enables or disables using keyboard scrolling on the scroll layer.
+    void setKeyboardEnabled(bool value);
+    bool isKeyboardEnabled();
+
     /// Enable/disable vertical or horizontal scrolling.
     void setVerticalScroll(bool value);
     void setHorizontalScroll(bool value);
@@ -253,7 +257,7 @@ private:
     /// Bounces scroll layer back when overshooting the bounds.
     void bounceBack(bool horizontal);
 
-    /// Collects touch handlers recursively for child nodes.
+    /// Does Nothing
     void collectHandlers(cocos2d::CCNode* node, std::vector<std::pair<cocos2d::CCTouchHandler*, int>>& out);
 
     /// Recursively cancels touches for a node and its children.
@@ -268,7 +272,7 @@ private:
     /// Marks the container as dirty so layout/culling is updated.
     void setContainerDirty();
 
-    /// Handles touch priority management internally.
+    /// Does Nothing
     void handleTouchPrio();
 
     /// Performs culling of offscreen child nodes for performance.

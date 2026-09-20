@@ -27,6 +27,7 @@ bool BasicScrollArrow::init() {
     if (!ScrollArrowElement::init()) return false;
 
     m_impl->m_arrow = CCSprite::createWithSpriteFrameName("colorSpike_01_color_001.png");
+    m_impl->m_arrow->setID("arrow-sprite"_spr);
 
     setContentHeight(10.f);
 

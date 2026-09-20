@@ -1,3 +1,11 @@
+# 1.4.0
+- Add MirrowNode, a cleaner alternative to RenderNode
+- Fix clicking on scrollbar track with content smaller than the height of the scroll layer causing the scroll content to become invisible
+- Improve AdvancedScrollLayer touch logic, no longer relying on hacky touch prio stuff
+- Make TouchDispatcher safer
+- Add node IDs
+- Add the ability to disable keyboard scroll on AdvancedScrollLayer
+
 # 1.3.4
 - Remove fix for iOS only for now
 

@@ -29,6 +29,7 @@ bool BasicScrollTrack::init() {
     m_impl->m_background = CCLayerColor::create();
     m_impl->m_background->ignoreAnchorPointForPosition(false);
     m_impl->m_background->setAnchorPoint({0.f, 0.f});
+    m_impl->m_background->setID("background"_spr);
 
     m_impl->m_background->setColor({0, 0, 0});
     m_impl->m_background->setOpacity(180);

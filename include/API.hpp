@@ -6,6 +6,7 @@
 #include "Actions.hpp"
 #include "Utils.hpp"
 #include "CursorManager.hpp"
+#include "Image.hpp"
 
 namespace alpha {
     namespace ui {}

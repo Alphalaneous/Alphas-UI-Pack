@@ -1,40 +1,10 @@
 #include "nodes/RenderNode.hpp"
 #include <Geode/Geode.hpp>
 #include "API.hpp"
+#include "../CCTexture2DExt.hpp"
 
 using namespace geode::prelude;
 using namespace alpha::prelude;
-
-class CCTexture2DExt : public CCTexture2D {
-public:
-    static CCTexture2DExt* create(GLuint name, GLsizei pixelsWidth, GLsizei pixelsHeight, const CCSize& contentSize) {
-        auto ret = new CCTexture2DExt();
-        if (ret->initWithGLName(name, pixelsWidth, pixelsHeight, contentSize)) {
-            ret->autorelease();
-            return ret;
-        }
-        delete ret;
-        return nullptr;
-    }
-
-protected:
-    bool initWithGLName(GLuint name, GLsizei pixelsWidth, GLsizei pixelsHeight, const CCSize& contentSize) {
-        m_uName = name;
-
-        m_tContentSize = contentSize;
-        m_uPixelsWide = pixelsWidth;
-        m_uPixelsHigh = pixelsHeight;
-        m_ePixelFormat = kCCTexture2DPixelFormat_RGBA8888;
-        m_fMaxS = contentSize.width / static_cast<float>(pixelsWidth);
-        m_fMaxT = contentSize.height / static_cast<float>(pixelsHeight);
-
-        m_bHasPremultipliedAlpha = true;
-        m_bHasMipmaps = false;
-
-        setShaderProgram(CCShaderCache::sharedShaderCache()->programForKey(kCCShader_PositionTexture));
-        return true;
-    }
-};
 
 struct RenderNode::Impl final {
     cocos2d::CCNode* m_nodeToRender;
@@ -42,6 +12,7 @@ struct RenderNode::Impl final {
     GLuint m_fbo = 0;
     GLuint m_rbo = 0;
     GLuint m_texture = 0;
+    CCSize m_startSize;
     int m_texWidth = 0;
     int m_texHeight = 0;
     bool m_constain = false;
@@ -88,7 +59,7 @@ bool RenderNode::init(CCNode* node, bool constrain) {
     }
     else {
         auto winSize = CCDirector::get()->getWinSize();
-        setPosition(winSize/2);
+        setPosition(winSize / 2.f);
         setAnchorPoint({0.5f, 0.5f});
         setContentSize(winSize);
     }
@@ -114,6 +85,7 @@ void RenderNode::initFBO() {
     GLint viewport[4];
     glGetIntegerv(GL_VIEWPORT, viewport);
     auto winSize = CCDirector::get()->getWinSize();
+    m_impl->m_startSize = winSize;
 
     auto scale = CCDirector::get()->getContentScaleFactor();
     auto size = m_impl->m_nodeToRender->boundingBox().size;
@@ -200,7 +172,6 @@ void RenderNode::render() {
 
     GLint viewport[4];
     glGetIntegerv(GL_VIEWPORT, viewport);
-    auto winSize = CCDirector::get()->getWinSize();
 
     glBindFramebuffer(GL_FRAMEBUFFER, m_impl->m_fbo);
     glViewport(0, 0, m_impl->m_texWidth, m_impl->m_texHeight);
@@ -218,7 +189,7 @@ void RenderNode::render() {
     if (m_impl->m_constain) {
         kmMat4OrthographicProjection(&ortho, 0, m_impl->m_texWidth / scale, m_impl->m_texHeight / scale, 0, -1024, 1024);
     } else {
-        kmMat4OrthographicProjection(&ortho, 0, winSize.width, winSize.height, 0, -1024, 1024);
+        kmMat4OrthographicProjection(&ortho, 0, m_impl->m_startSize.width, m_impl->m_startSize.height, 0, -1024, 1024);
     }
 
     kmGLMultMatrix(&ortho);

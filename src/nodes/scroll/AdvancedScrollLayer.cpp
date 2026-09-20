@@ -36,13 +36,14 @@ struct AdvancedScrollLayer::Impl final {
 
     float m_scrollDelta = 0.5f;
 
+    bool m_keyboardEnabled = true;
+
     bool m_cullingEnabled = true;
     bool m_draggingEnabled = true;
     bool m_allowEmptyClickThrough = false;
     bool m_nextScrollSmoothX = false;
     bool m_nextScrollSmoothY = false;
     bool m_waitForBounce = false;
-    bool m_touchFixQueued = false;
 
     int m_touchPrio = 0;
 
@@ -53,18 +54,15 @@ struct AdvancedScrollLayer::Impl final {
     Ref<CCActionEase> m_horizontalBack;
     Ref<CCActionEase> m_smoothScrollToX;
     Ref<CCActionEase> m_smoothScrollToY;
-    std::vector<Ref<CCTouch>> m_activeTouches;
     ScrollContent* m_content;
     CCNode* m_contentContainer;
     CCNode* m_clickNode;
-    Ref<CCArray> m_contentArr;
     CCPoint m_scrollPoint;
     CCPoint m_velocity;
     std::vector<PositionSample> m_samples;
     CullingMethod m_cullingMethod;
-    Ref<CCClippingNode> m_clippingNode;
+    CCClippingNode* m_clippingNode;
     CCLayerColor* m_stencil;
-    Ref<TouchBlocker> m_blockLayer;
     CCSize m_stencilSizeOffset;
 };
 
@@ -72,7 +70,7 @@ AdvancedScrollLayer::AdvancedScrollLayer() : m_impl(std::make_unique<Impl>()) {}
 AdvancedScrollLayer::~AdvancedScrollLayer() = default;
 
 void AdvancedScrollLayer::registerDevTools() {
-    devtools::registerNode<AdvancedScrollLayer>([](AdvancedScrollLayer* node) {
+    devtools::registerNode<AdvancedScrollLayer>([] (AdvancedScrollLayer* node) {
 
         devtools::label(fmt::format("Holding: {}", node->m_impl->m_holding).c_str());
         devtools::label(fmt::format("Dragging: {}", node->m_impl->m_dragging).c_str());
@@ -150,6 +148,7 @@ bool AdvancedScrollLayer::init(const CCSize& size, CullingMethod cullingMethod) 
     if (!CCNode::init()) return false;
 
     m_impl->m_content = ScrollContent::create(this);
+    m_impl->m_content->setID("content"_spr);
     m_impl->m_content->setContentSize(size);
     
     m_impl->m_cullingMethod = std::move(cullingMethod);
@@ -159,11 +158,9 @@ bool AdvancedScrollLayer::init(const CCSize& size, CullingMethod cullingMethod) 
     setAnchorPoint({0.5f, 0.5f});
     ignoreAnchorPointForPosition(false);
 
-    m_impl->m_contentArr = CCArray::create();
-    m_impl->m_contentArr->addObject(m_impl->m_content);
-
     m_impl->m_contentContainer = CCNode::create();
     m_impl->m_contentContainer->setAnchorPoint({0.f, 1.f});
+    m_impl->m_contentContainer->setID("content-container"_spr);
     m_impl->m_contentContainer->addChild(m_impl->m_content);
 
     m_impl->m_stencil = CCLayerColor::create({255, 255, 255, 255});
@@ -174,15 +171,11 @@ bool AdvancedScrollLayer::init(const CCSize& size, CullingMethod cullingMethod) 
     m_impl->m_clippingNode = CCClippingNode::create(m_impl->m_stencil);
     m_impl->m_clippingNode->setAnchorPoint({0.5f, 0.5f});
     m_impl->m_clippingNode->addChild(m_impl->m_contentContainer);
+    m_impl->m_clippingNode->setID("clipped-content"_spr);
 
     CCNode::addChild(m_impl->m_clippingNode, 0, 0);
 
     m_impl->m_clickNode = this;
-    m_impl->m_blockLayer = TouchBlocker::create(this);
-    m_impl->m_blockLayer->setEnabled(true);
-
-    CCNode::addChild(m_impl->m_blockLayer, 0, 0);
-    m_impl->m_blockLayer->setZOrder(-1);
 
     setTouchPriority(-130);
     setContentSize(size);
@@ -204,48 +197,7 @@ ScrollContent* AdvancedScrollLayer::getContentLayer() {
 }
 
 void AdvancedScrollLayer::handleTouchPrio() {
-    std::vector<std::pair<CCTouchHandler*, int>> handlers;
-    collectHandlers(this, handlers);
-
-    int minPrio = getTouchPriority() + 2;
-
-    if (!handlers.empty()) {
-        int maxPrio = std::numeric_limits<int>::min();
-        for (auto& [h, p] : handlers) {
-            if (p > maxPrio) maxPrio = p;
-        }
-
-        for (auto& [h, p] : handlers) {
-            int normalized = p - maxPrio;
-
-            if (auto node = typeinfo_cast<CCNode*>(h->getDelegate())) {
-                node->setUserObject("scroll-layer"_spr, this);
-                this->release();
-            }
-
-            int newPrio = getTouchPriority() + normalized - 2;
-            CCTouchDispatcher::get()->setPriority(newPrio, h->getDelegate());
-
-            if (newPrio < minPrio) minPrio = newPrio;
-        }
-    }
-    
-    runAction(CallFuncExt::create([this, minPrio] {
-
-    setTouchPriority(minPrio - 1);
-        if (auto delegate = static_cast<CCTouchDelegate*>(this)) {
-            if (auto handler = CCTouchDispatcher::get()->findHandler(delegate)) {
-                CCTouchDispatcher::get()->setPriority(minPrio - 1, handler->getDelegate());
-            }
-        }
-    }));
-
-    m_impl->m_blockLayer->setTouchPriority(minPrio + 1);
-    if (auto delegate = static_cast<CCTouchDelegate*>(m_impl->m_blockLayer)) {
-        if (auto handler = CCTouchDispatcher::get()->findHandler(delegate)) {
-            CCTouchDispatcher::get()->setPriority(minPrio + 1, handler->getDelegate());
-        }
-    }
+    // does nothing
 }
 
 void AdvancedScrollLayer::setLayout(Layout* layout, bool apply, bool respectAnchor) {
@@ -268,8 +220,6 @@ void AdvancedScrollLayer::onEnter() {
 
     m_impl->m_prevScrollPoint = CCPoint{FLT_MIN, FLT_MIN};
     update(0);
-
-    m_impl->m_touchFixQueued = true;
 }
 
 void AdvancedScrollLayer::onExit() {
@@ -282,12 +232,12 @@ void AdvancedScrollLayer::onExit() {
 // The tree would normally be m_clippingNode -> m_contentContainer -> m_content. 
 // This also prevents layouts from affecting it, and makes it easier to use getChildBy...
 CCArray* AdvancedScrollLayer::getChildren() {
-    return m_impl->m_contentArr;
+    return CCNode::getChildren();
 }
 
 // always 1, m_content is the only child with this setup
 unsigned int AdvancedScrollLayer::getChildrenCount() const {
-    return 1;
+    return CCNode::getChildrenCount();
 }
 
 void AdvancedScrollLayer::addChild(CCNode* child, int zOrder, int tag) {
@@ -334,25 +284,8 @@ void AdvancedScrollLayer::setContentSize(const CCSize& size) {
     update(0);
 }
 
-CCTouchHandler* findHandler(CCTouchDelegate* delegate) {
-    auto mainNode = typeinfo_cast<CCNode*>(delegate);
-    for (auto handler : CCArrayExt<CCTouchHandler*>(CCTouchDispatcher::get()->m_pTargetedHandlers)) {
-        if (auto node = typeinfo_cast<CCNode*>(handler->getDelegate())) {
-            if (mainNode == node) return handler;
-        }
-    }
-    return nullptr;
-}
-
 void AdvancedScrollLayer::collectHandlers(CCNode* node, std::vector<std::pair<CCTouchHandler*, int>>& out) {
-    for (auto child : node->getChildrenExt()) {
-        if (auto delegate = typeinfo_cast<CCTouchDelegate*>(child)) {
-            if (auto handler = findHandler(delegate)) {
-                out.emplace_back(handler, handler->getPriority());
-            }
-        }
-        collectHandlers(child, out);
-    }
+    // does nothing
 }
 
 int AdvancedScrollLayer::getTouchPriority() {
@@ -361,6 +294,14 @@ int AdvancedScrollLayer::getTouchPriority() {
 
 void AdvancedScrollLayer::setTouchPriority(int prio) {
     m_impl->m_touchPrio = prio;
+}
+
+bool AdvancedScrollLayer::isKeyboardEnabled() {
+    return m_impl->m_keyboardEnabled;
+}
+
+void AdvancedScrollLayer::setKeyboardEnabled(bool value) {
+    m_impl->m_keyboardEnabled = value;
 }
 
 void AdvancedScrollLayer::cancelTouchesRecursive(CCNode* node, CCTouch* touch, CCEvent* event) {
@@ -381,15 +322,9 @@ void AdvancedScrollLayer::cancelChildrenTouches(CCTouch* touch, CCEvent* event) 
 
 bool AdvancedScrollLayer::ccTouchBegan(CCTouch* touch, CCEvent* event) {
     if (!nodeIsVisible(this)) return false;
-    m_impl->m_activeTouches.push_back(touch);
     m_impl->m_prevTouchLocation = convertToNodeSpace(touch->getLocation());
 
     if (!alpha::utils::isPointInsideNode(m_impl->m_clickNode, touch->getLocation())) {
-        setVisible(false);
-        runAction(CallFuncExt::create([this, touch = Ref(touch), event = Ref(event)] {
-            cancelChildrenTouches(touch, event);
-            setVisible(true);
-        }));
         return false;
     }
 
@@ -495,9 +430,6 @@ void AdvancedScrollLayer::ccTouchEnded(CCTouch* touch, CCEvent* event) {
 
     m_impl->m_holding = false;
     m_impl->m_samples.clear();
-
-    auto it = std::find(m_impl->m_activeTouches.begin(), m_impl->m_activeTouches.end(), touch);
-    if (it != m_impl->m_activeTouches.end()) m_impl->m_activeTouches.erase(it);
 }
 
 void AdvancedScrollLayer::bounceBack(bool horizontal) {
@@ -623,9 +555,6 @@ void AdvancedScrollLayer::ccTouchCancelled(CCTouch* touch, CCEvent* pEvent) {
     m_impl->m_velocity = CCPoint{0.f, 0.f};
     m_impl->m_samples.clear();
 
-    auto it = std::find(m_impl->m_activeTouches.begin(), m_impl->m_activeTouches.end(), touch);
-    if (it != m_impl->m_activeTouches.end()) m_impl->m_activeTouches.erase(it);
-
     constrain();
 }
 
@@ -739,11 +668,6 @@ void AdvancedScrollLayer::forceCull() {
 void AdvancedScrollLayer::update(float dt) {
     if (!m_impl->m_content) return;
 
-    if (m_impl->m_touchFixQueued) {
-        handleTouchPrio();
-        m_impl->m_touchFixQueued = false;
-    }
-    
     m_impl->m_contentContainer->setContentSize(m_impl->m_content->getScaledContentSize());
     setMinContainerSize();
 
@@ -918,6 +842,8 @@ Result<float> AdvancedScrollLayer::getVerticalScroll(enumKeyCodes key, bool hori
 }
 
 void AdvancedScrollLayer::keyPress(enumKeyCodes key, bool isKeyDown, bool isKeyRepeat) {
+    if (!m_impl->m_keyboardEnabled) return;
+    
     if (isKeyDown) {
         if (m_impl->m_horizontalScroll && m_impl->m_swapScrollDirection && !m_impl->m_verticalScroll) {
             if (auto scroll = getVerticalScroll(key, true)) {
@@ -1062,7 +988,6 @@ float AdvancedScrollLayer::getMinVelocity() {
 void AdvancedScrollLayer::allowEmptyClickThrough(bool allow) {
     m_impl->m_allowEmptyClickThrough = allow;
     m_impl->m_clickNode = allow ? static_cast<CCNode*>(m_impl->m_content) : this;
-    m_impl->m_blockLayer->setTarget(m_impl->m_clickNode);
 }
 
 bool AdvancedScrollLayer::allowsEmptyClickThrough() {
@@ -1095,7 +1020,6 @@ float AdvancedScrollLayer::getScrollDelta() {
 
 void AdvancedScrollLayer::blockTouchBehind(bool blocked) {
     m_impl->m_blockerEnabled = blocked;
-    m_impl->m_blockLayer->setEnabled(!blocked);
 }
 
 bool AdvancedScrollLayer::blocksTouchBehind() {
