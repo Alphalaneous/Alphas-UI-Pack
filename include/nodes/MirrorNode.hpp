@@ -6,8 +6,8 @@
 #include <Geode/utils/cocos.hpp>
 #include <Geode/utils/function.hpp>
 #include "../export.hpp"
-#include "Image.hpp"
-#include "touch/TouchDelegate.hpp"
+#include "../Image.hpp"
+#include "../touch/TouchDelegate.hpp"
 
 namespace alpha::ui {
 
