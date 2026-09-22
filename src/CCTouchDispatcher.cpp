@@ -124,26 +124,22 @@ class $modify(AUPCCTouchDispatcher, CCTouchDispatcher) {
             if (index == CCTOUCHENDED || index == CCTOUCHCANCELLED) {
                 s_touchScrollLayers.erase(it);
             }
-            s_removedDelegates.clear();
-            return;
         }
+        else if (index != CCTOUCHBEGAN) {
+            bool blocked = false;
+            for (const auto& [k, v] : s_touchScrollLayers) {
+                if (v->blocksTouchBehind()) {
+                    blocked = true;
+                    break;
+                }
+            }
 
-        bool blocked = false;
-        for (const auto& [k, v] : s_touchScrollLayers) {
-            if (v->blocksTouchBehind()) {
-                blocked = true;
-                break;
+            if (!blocked) {
+                auto removed = filterHandlers(nullptr, touch, index);
+                CCTouchDispatcher::touches(touches, event, index);
+                restoreHandlers(removed);
             }
         }
-
-        if (blocked) {
-            s_removedDelegates.clear();
-            return;
-        }
-
-        auto removed = filterHandlers(nullptr, touch, index);
-        CCTouchDispatcher::touches(touches, event, index);
-        restoreHandlers(removed);
 
         s_removedDelegates.clear();
     }

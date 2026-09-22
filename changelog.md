@@ -1,8 +1,11 @@
+# 1.4.2
+- Fix some touch issues
+
 # 1.4.1
 - Fix includes
 
 # 1.4.0
-- Add MirrowNode, a cleaner alternative to RenderNode
+- Add MirrorNode, a cleaner alternative to RenderNode
 - Fix clicking on scrollbar track with content smaller than the height of the scroll layer causing the scroll content to become invisible
 - Improve AdvancedScrollLayer touch logic, no longer relying on hacky touch prio stuff
 - Make TouchDispatcher safer
