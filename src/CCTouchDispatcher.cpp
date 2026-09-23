@@ -1,12 +1,10 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/CCTouchDispatcher.hpp>
 #include "nodes/scroll/AdvancedScrollLayer.hpp"
-#include "Utils.hpp"
 
 using namespace geode::prelude;
 
 static std::set<CCTouchDelegate*> s_removedDelegates;
-static std::unordered_map<CCTouch*, alpha::ui::AdvancedScrollLayer*> s_touchScrollLayers;
 
 class $modify(AUPCCTouchDispatcher, CCTouchDispatcher) {
 
@@ -14,38 +12,21 @@ class $modify(AUPCCTouchDispatcher, CCTouchDispatcher) {
         (void) self.setHookPriorityPre("CCTouchDispatcher::touches", Priority::VeryEarlyPre);
     }
 
-    CCArray* filterHandlers(alpha::ui::AdvancedScrollLayer* preferredScroll, CCTouch* touch, unsigned int index) {
+    CCArray* filterHandlers(alpha::ui::AdvancedScrollLayer* preferredScroll) {
         auto removed = CCArray::create();
 
         for (auto handler : CCArrayExt<CCTargetedTouchHandler, false>(m_pTargetedHandlers)) {
             if (preferredScroll && handler->getDelegate() == preferredScroll) continue;
 
             auto node = typeinfo_cast<CCNode*>(handler->getDelegate());
+            auto scroll = node ? node->getParentByType<alpha::ui::AdvancedScrollLayer>() : nullptr;
 
-            if (!node) {
-                if (preferredScroll) {
-                    removed->addObject(handler);
-                }
-                continue;
-            }
-
-            auto scroll = node->getParentByType<alpha::ui::AdvancedScrollLayer>();
-
-            if (preferredScroll && scroll && (scroll != preferredScroll)) {
+            if ((!preferredScroll && scroll) || (preferredScroll && !node)) {
                 removed->addObject(handler);
-                continue;
-            }
-
-            if (scroll) {
-                if (!preferredScroll || (index == CCTOUCHBEGAN && !alpha::utils::isPointInsideNode(scroll, touch->getLocation()))) {
-                    removed->addObject(handler);
-                    continue;
-                }
             }
         }
 
         m_pTargetedHandlers->removeObjectsInArray(removed);
-
         return removed;
     }
 
@@ -53,25 +34,17 @@ class $modify(AUPCCTouchDispatcher, CCTouchDispatcher) {
         for (auto handler : CCArrayExt<CCTargetedTouchHandler, false>(handlers)) {
             if (s_removedDelegates.contains(handler->getDelegate())) continue;
 
-            bool exists = false;
+            bool exists = m_pTargetedHandlers->containsObject(handler);
+            if (exists) continue;
 
-            for (auto existing : CCArrayExt<CCTargetedTouchHandler, false>(m_pTargetedHandlers)) {
-                if (existing == handler) {
-                    exists = true;
-                    break;
-                }
-            }
-
-            if (!exists) {
-                m_pTargetedHandlers->addObject(handler);
-            }
+            m_pTargetedHandlers->addObject(handler);
         }
     }
 
     void dispatchTouch(CCTouch* touch, CCEvent* event, unsigned int index, alpha::ui::AdvancedScrollLayer* preferredScroll) {
         if (!touch) return;
 
-        auto removed = filterHandlers(preferredScroll, touch, index);
+        auto removed = filterHandlers(preferredScroll);
 
         auto touchSet = CCSet::create();
         touchSet->addObject(touch);
@@ -86,9 +59,22 @@ class $modify(AUPCCTouchDispatcher, CCTouchDispatcher) {
         CCTouchDispatcher::removeDelegate(delegate);
     }
 
-    void addTargetedDelegate(CCTouchDelegate *delegate, int priority, bool swallowsTouches) {
+    void addTargetedDelegate(CCTouchDelegate* delegate, int priority, bool swallowsTouches) {
         s_removedDelegates.erase(delegate);
         CCTouchDispatcher::addTargetedDelegate(delegate, priority, swallowsTouches);
+    }
+
+    void cancelAllTouches(CCTouch* touch, CCEvent* event, unsigned int index, alpha::ui::AdvancedScrollLayer* scrollLayer) {
+        for (auto handler : CCArrayExt<CCTargetedTouchHandler, false>(m_pTargetedHandlers)) {
+            auto claimed = handler->getClaimedTouches();
+            if (!claimed || !claimed->containsObject(touch)) continue;
+
+            auto delegate = handler->getDelegate();
+            if (!delegate || delegate == scrollLayer) continue;
+
+            delegate->ccTouchCancelled(touch, event);
+            claimed->removeObject(touch);
+        }
     }
 
     void touches(CCSet* touches, CCEvent* event, unsigned int index) {
@@ -97,50 +83,34 @@ class $modify(AUPCCTouchDispatcher, CCTouchDispatcher) {
         auto touch = static_cast<CCTouch*>(touches->anyObject());
 
         if (index == CCTOUCHBEGAN) {
-            auto removed = filterHandlers(nullptr, touch, index);
+            alpha::ui::AdvancedScrollLayer* scrollLayer = nullptr;
+
+            auto removed = filterHandlers(nullptr);
             CCTouchDispatcher::touches(touches, event, index);
 
             for (auto handler : CCArrayExt<CCTargetedTouchHandler, false>(m_pTargetedHandlers)) {
                 auto claimed = handler->getClaimedTouches();
-                if (claimed && !claimed->containsObject(touch)) continue;
+                if (!claimed || !claimed->containsObject(touch)) continue;
 
                 auto scroll = typeinfo_cast<alpha::ui::AdvancedScrollLayer*>(handler->getDelegate());
+                if (!scroll) continue;
 
-                if (scroll) {
-                    s_touchScrollLayers[touch] = scroll;
-                    break;
-                }
+                scrollLayer = scroll;
+                break;
             }
+            
             restoreHandlers(removed);
-        }
 
-        auto it = s_touchScrollLayers.find(touch);
-
-        if (it != s_touchScrollLayers.end()) {
-            auto scroll = it->second;
-
-            dispatchTouch(touch, event, index, scroll);
-
-            if (index == CCTOUCHENDED || index == CCTOUCHCANCELLED) {
-                s_touchScrollLayers.erase(it);
-            }
-        }
-        else if (index != CCTOUCHBEGAN) {
-            bool blocked = false;
-            for (const auto& [k, v] : s_touchScrollLayers) {
-                if (v->blocksTouchBehind()) {
-                    blocked = true;
-                    break;
-                }
+            if (scrollLayer) {
+                cancelAllTouches(touch, event, index, scrollLayer);
+                dispatchTouch(touch, event, index, scrollLayer);
             }
 
-            if (!blocked) {
-                auto removed = filterHandlers(nullptr, touch, index);
-                CCTouchDispatcher::touches(touches, event, index);
-                restoreHandlers(removed);
-            }
+            s_removedDelegates.clear();
+            return;
         }
 
+        CCTouchDispatcher::touches(touches, event, index);
         s_removedDelegates.clear();
     }
 };

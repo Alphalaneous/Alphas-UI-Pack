@@ -92,16 +92,17 @@ void TouchDispatcher::hovers(TouchEvent* touch) {
         }
 
         const bool swallows = handler->m_bSwallowsTouches;
-        auto claimed = handler->m_pClaimedTouches;
-        if (!claimed) {
-            claimed = handler->m_pClaimedTouches = CCSet::create();
-        }
 
         auto delegate = typeinfo_cast<TouchDelegate*>(handler->getDelegate());
         if (!delegate) {
             if (swallows && inside) {
                 hoverClaimed = true;
             }
+            continue;
+        }
+
+        auto claimed = handler->getClaimedTouches();
+        if (!claimed) {
             continue;
         }
 
@@ -162,9 +163,9 @@ void TouchDispatcher::clicks(TouchEvent* touch, TouchType type) {
             }
         }
 
-        auto claimed = handler->m_pClaimedTouches;
+        auto claimed = handler->getClaimedTouches();
         if (!claimed) {
-            claimed = handler->m_pClaimedTouches = CCSet::create();
+            continue;
         }
 
         if (type == TouchType::CLICK_BEGAN && !clickBlocked) {

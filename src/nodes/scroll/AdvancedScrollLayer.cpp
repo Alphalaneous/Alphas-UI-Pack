@@ -25,8 +25,6 @@ struct AdvancedScrollLayer::Impl final {
 
     bool m_allowsZoom = false;
 
-    bool m_blockerEnabled = false;
-
     float m_overshoot = 50.f;
     float m_friction = 0.7f;
     float m_minVelocity = 200.f;
@@ -309,6 +307,14 @@ void AdvancedScrollLayer::cancelTouchesRecursive(CCNode* node, CCTouch* touch, C
 
     if (auto delegate = typeinfo_cast<CCTouchDelegate*>(node)) {
         delegate->ccTouchCancelled(touch, event);
+
+        auto handler = typeinfo_cast<CCTargetedTouchHandler*>(CCTouchDispatcher::get()->findHandler(delegate));
+        if (handler) {
+            auto claimed = handler->getClaimedTouches();
+            if (claimed) {
+                claimed->removeObject(touch);
+            }
+        }
     }
 
     for (auto child : node->getChildrenExt()) {
@@ -1019,11 +1025,11 @@ float AdvancedScrollLayer::getScrollDelta() {
 }
 
 void AdvancedScrollLayer::blockTouchBehind(bool blocked) {
-    m_impl->m_blockerEnabled = blocked;
+
 }
 
 bool AdvancedScrollLayer::blocksTouchBehind() {
-    return m_impl->m_blockerEnabled;
+    return true;
 }
 
 void AdvancedScrollLayer::setMinZoom(float value) {

@@ -1,3 +1,8 @@
+# 1.4.3
+- Fix a crash
+- Fix a bug where scroll layer touch would also happen behind it and that would never get ended/cancelled
+- Code cleanup
+
 # 1.4.2
 - Fix some touch issues
 

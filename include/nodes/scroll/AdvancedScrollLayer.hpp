@@ -206,7 +206,7 @@ public:
     void allowEmptyClickThrough(bool allow);
     bool allowsEmptyClickThrough();
 
-    /// Doesn't allow clicks to pass through.
+    /// Does nothing, blocking touch is required.
     void blockTouchBehind(bool blocked);
     bool blocksTouchBehind();
 
