@@ -16,7 +16,10 @@ class $modify(AUPCCTouchDispatcher, CCTouchDispatcher) {
         auto removed = CCArray::create();
 
         for (auto handler : CCArrayExt<CCTargetedTouchHandler, false>(m_pTargetedHandlers)) {
-            if (preferredScroll && handler->getDelegate() == preferredScroll) continue;
+            if (preferredScroll && handler->getDelegate() == preferredScroll) {
+                removed->addObject(handler);
+                continue;
+            }
 
             auto node = typeinfo_cast<CCNode*>(handler->getDelegate());
             auto scroll = node ? node->getParentByType<alpha::ui::AdvancedScrollLayer>() : nullptr;
@@ -41,15 +44,10 @@ class $modify(AUPCCTouchDispatcher, CCTouchDispatcher) {
         }
     }
 
-    void dispatchTouch(CCTouch* touch, CCEvent* event, unsigned int index, alpha::ui::AdvancedScrollLayer* preferredScroll) {
-        if (!touch) return;
-
+    void dispatchTouch(CCSet* touches, CCEvent* event, unsigned int index, alpha::ui::AdvancedScrollLayer* preferredScroll) {
         auto removed = filterHandlers(preferredScroll);
 
-        auto touchSet = CCSet::create();
-        touchSet->addObject(touch);
-
-        CCTouchDispatcher::touches(touchSet, event, index);
+        CCTouchDispatcher::touches(touches, event, index);
 
         restoreHandlers(removed);
     }
@@ -78,11 +76,12 @@ class $modify(AUPCCTouchDispatcher, CCTouchDispatcher) {
     }
 
     void touches(CCSet* touches, CCEvent* event, unsigned int index) {
-        if (!touches || touches->count() == 0) return;
-
-        auto touch = static_cast<CCTouch*>(touches->anyObject());
-
         if (index == CCTOUCHBEGAN) {
+            if (!touches || touches->count() == 0) return;
+
+            auto touchesCopy = touches->mutableCopy();
+            auto touch = static_cast<CCTouch*>(touchesCopy->anyObject());
+
             alpha::ui::AdvancedScrollLayer* scrollLayer = nullptr;
 
             auto removed = filterHandlers(nullptr);
@@ -103,9 +102,10 @@ class $modify(AUPCCTouchDispatcher, CCTouchDispatcher) {
 
             if (scrollLayer) {
                 cancelAllTouches(touch, event, index, scrollLayer);
-                dispatchTouch(touch, event, index, scrollLayer);
+                dispatchTouch(touchesCopy, event, index, scrollLayer);
             }
 
+            touchesCopy->release();
             s_removedDelegates.clear();
             return;
         }

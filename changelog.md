@@ -1,3 +1,6 @@
+# 1.4.4
+- Fix another crash with AdvancedScrollLayer
+
 # 1.4.3
 - Fix a crash
 - Fix a bug where scroll layer touch would also happen behind it and that would never get ended/cancelled

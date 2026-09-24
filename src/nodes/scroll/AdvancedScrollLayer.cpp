@@ -307,14 +307,6 @@ void AdvancedScrollLayer::cancelTouchesRecursive(CCNode* node, CCTouch* touch, C
 
     if (auto delegate = typeinfo_cast<CCTouchDelegate*>(node)) {
         delegate->ccTouchCancelled(touch, event);
-
-        auto handler = typeinfo_cast<CCTargetedTouchHandler*>(CCTouchDispatcher::get()->findHandler(delegate));
-        if (handler) {
-            auto claimed = handler->getClaimedTouches();
-            if (claimed) {
-                claimed->removeObject(touch);
-            }
-        }
     }
 
     for (auto child : node->getChildrenExt()) {
