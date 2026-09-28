@@ -1,3 +1,6 @@
+# 1.4.5
+- Fix a rare crash
+
 # 1.4.4
 - Fix another crash with AdvancedScrollLayer
 

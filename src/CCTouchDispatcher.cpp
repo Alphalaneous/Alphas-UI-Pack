@@ -76,6 +76,8 @@ class $modify(AUPCCTouchDispatcher, CCTouchDispatcher) {
     }
 
     void touches(CCSet* touches, CCEvent* event, unsigned int index) {
+        Ref<CCArray> handlersCopy = m_pTargetedHandlers->shallowCopy();
+
         if (index == CCTOUCHBEGAN) {
             if (!touches || touches->count() == 0) return;
 
