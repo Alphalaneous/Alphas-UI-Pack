@@ -3,6 +3,7 @@
 #include <Geode/cocos/base_nodes/CCNode.h>
 #include <Geode/ui/NineSlice.hpp>
 #include "AdvancedScrollBar.hpp"
+#include "Geode/loader/Event.hpp"
 #include "ScrollContent.hpp"
 #include "AdvancedScrollDelegate.hpp"
 #include "../../export.hpp"
@@ -33,6 +34,10 @@ public:
     using cocos2d::CCNode::addChild;
     using cocos2d::CCNode::removeChild;
 
+    class ScrollEvent : public geode::GlobalEvent<ScrollEvent, bool(float x, float y), AdvancedScrollLayer*> {
+        using GlobalEvent::GlobalEvent;
+    };
+    
     /**
      * @brief Constructs a new AdvancedScrollLayer.
      */

@@ -1,3 +1,6 @@
+# 1.4.6
+- Add AdvancedScrollLayer::ScrollEvent to listen for when a scroll happens
+
 # 1.4.5
 - Fix a rare crash
 

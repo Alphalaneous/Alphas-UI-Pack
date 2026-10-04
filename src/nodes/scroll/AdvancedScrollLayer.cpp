@@ -648,6 +648,8 @@ void AdvancedScrollLayer::constrain(bool skipInertiaCheck) {
 
 void AdvancedScrollLayer::cull() {
     if (m_impl->m_prevScrollPoint == m_impl->m_scrollPoint) return;
+    ScrollEvent(this).send(m_impl->m_scrollPoint.x, m_impl->m_scrollPoint.y);
+
     forceCull();
 }
 
