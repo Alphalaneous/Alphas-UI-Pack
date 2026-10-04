@@ -2,8 +2,8 @@
 
 #include <Geode/cocos/base_nodes/CCNode.h>
 #include <Geode/ui/NineSlice.hpp>
+#include <Geode/loader/Event.hpp>
 #include "AdvancedScrollBar.hpp"
-#include "Geode/loader/Event.hpp"
 #include "ScrollContent.hpp"
 #include "AdvancedScrollDelegate.hpp"
 #include "../../export.hpp"
