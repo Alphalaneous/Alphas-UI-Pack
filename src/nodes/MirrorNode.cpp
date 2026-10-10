@@ -132,7 +132,7 @@ void MirrorNode::initFBO() {
     glBindFramebuffer(GL_FRAMEBUFFER, prevFbo);
 
     #ifndef GEODE_IS_IOS
-    glBindFramebuffer(GL_RENDERBUFFER, prevRbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, prevRbo);
     #endif
 
     auto texObj = CCTexture2DExt::create(m_impl->m_texture, m_impl->m_texWidth, m_impl->m_texHeight, CCSize(m_impl->m_texWidth / scale, m_impl->m_texHeight / scale));
@@ -206,7 +206,7 @@ void MirrorNode::render() {
 
     node->setVisible(true);
     node->setAdditionalTransform(m_impl->m_compoundTransform);
-    
+
     node->visit();
 
     node->setVisible(showingOriginal());
@@ -219,7 +219,7 @@ void MirrorNode::render() {
 
     glBindFramebuffer(GL_FRAMEBUFFER, oldFBO);
     #ifndef GEODE_IS_IOS
-    glBindFramebuffer(GL_RENDERBUFFER, oldRBO);
+    glBindRenderbuffer(GL_RENDERBUFFER, oldRBO);
     #endif
     glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
 }
