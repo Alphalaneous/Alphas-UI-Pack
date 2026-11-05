@@ -1,14 +1,12 @@
 #pragma once
 
 #include "AdvancedScrollBar.hpp"
-#include "AdvancedScrollDelegate.hpp"
 #include "AdvancedScrollLayer.hpp"
 #include "ScrollArrowElement.hpp"
 #include "ScrollBarElement.hpp"
 #include "ScrollBarStyle.hpp"
 #include "ScrollBarStyles.hpp"
 #include "ScrollContent.hpp"
-#include "ScrollDispatcher.hpp"
 
 #include "elements/BasicScrollArrow.hpp"
 #include "elements/BasicScrollHandle.hpp"

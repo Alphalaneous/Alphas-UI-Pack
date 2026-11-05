@@ -1,40 +1,17 @@
 #pragma once
 
-#include <functional>
-
 #include "../../export.hpp"
+#include <Geode/ui/Layout.hpp>
+#include <Geode/utils/function.hpp>
 
 namespace alpha::ui {
-
-/**
- * @brief Represents spacing around or inside UI elements.
- */
-struct ALPHAS_UI_PACK_DLL Insets {
-    /// Space on the left side.
-    float left;
-
-    /// Space on the right side.
-    float right;
-
-    /// Space at the top.
-    float top;
-
-    /// Space at the bottom.
-    float bottom;
-}; 
 
 class ScrollBarElement;
 class ScrollArrowElement;
 
-/**
- * @brief Base style for scroll bars.
- *
- * Defines the appearance, layout, and behavior of a scroll bar.
- * Can be extended or used with different UI themes.
- */
 struct ALPHAS_UI_PACK_DLL ScrollBarStyle {
-    using BarElement = std::function<ScrollBarElement*()>;
-    using ArrowElement = std::function<ScrollArrowElement*()>;
+    using BarElement = geode::Function<ScrollBarElement*() const>;
+    using ArrowElement = geode::Function<ScrollArrowElement*() const>;
 
     /// Function that creates the scroll bar handle element.
     BarElement m_handle;
@@ -49,10 +26,10 @@ struct ALPHAS_UI_PACK_DLL ScrollBarStyle {
     ArrowElement m_downArrow;
 
     /// Inner spacing for the scroll bar elements.
-    Insets m_padding;
+    geode::Padding m_padding;
 
     /// Outer spacing (margins) around the scroll bar.
-    Insets m_margins;
+    geode::Padding m_margins;
 
     /// Width of the scroll bar.
     float m_scrollBarWidth;
@@ -66,39 +43,11 @@ struct ALPHAS_UI_PACK_DLL ScrollBarStyle {
     /// Whether the arrow buttons are displayed.
     bool m_showArrowButtons;
 
-    /**
-     * @brief Constructs a default ScrollBarStyle.
-     *
-     * Initializes default values for all members.
-     */
     ScrollBarStyle();
 
-    /**
-     * @brief Returns a new scroll bar handle element.
-     *
-     * @return Pointer to a ScrollBarElement representing the handle.
-     */
     ScrollBarElement* getHandle() const;
-
-    /**
-     * @brief Returns a new scroll bar track element.
-     *
-     * @return Pointer to a ScrollBarElement representing the track.
-     */
     ScrollBarElement* getTrack() const;
-
-    /**
-     * @brief Returns a new up/left arrow element.
-     *
-     * @return Pointer to a ScrollArrowElement for the up arrow.
-     */
     ScrollArrowElement* getUpArrow() const;
-
-    /**
-     * @brief Returns a new down/right arrow element.
-     *
-     * @return Pointer to a ScrollArrowElement for the down arrow.
-     */
     ScrollArrowElement* getDownArrow() const;
 };
 

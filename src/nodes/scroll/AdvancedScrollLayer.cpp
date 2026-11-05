@@ -1,9 +1,14 @@
+#include "nodes/scroll/AdvancedScrollLayer.hpp"
 #include <Geode/Geode.hpp>
 #include "API.hpp"
-#include <geode.devtools/include/API.hpp>
+#include "Utils.hpp"
+#include "nodes/scroll/AdvancedScrollBar.hpp"
+//#include <geode.devtools/include/API.hpp>
 
 using namespace geode::prelude;
 using namespace alpha::prelude;
+
+//TODO DevTools api
 
 struct AdvancedScrollLayer::Impl final {
     struct PositionSample {
@@ -43,7 +48,11 @@ struct AdvancedScrollLayer::Impl final {
     bool m_nextScrollSmoothY = false;
     bool m_waitForBounce = false;
 
-    int m_touchPrio = 0;
+    float m_scrollDecayX = 0.f;
+    float m_scrollDecayY = 0.f;
+
+    bool m_scrolling = false;
+    bool m_usesSmoothScroll = true;
 
     CCPoint m_prevTouchLocation;
     CCPoint m_prevScrollPoint {FLT_MIN, FLT_MIN};
@@ -62,13 +71,16 @@ struct AdvancedScrollLayer::Impl final {
     CCClippingNode* m_clippingNode;
     CCLayerColor* m_stencil;
     CCSize m_stencilSizeOffset;
+
+    AdvancedScrollBar* m_verticalScrollBar;
+    AdvancedScrollBar* m_horizontalScrollBar;
 };
 
 AdvancedScrollLayer::AdvancedScrollLayer() : m_impl(std::make_unique<Impl>()) {}
 AdvancedScrollLayer::~AdvancedScrollLayer() = default;
 
 void AdvancedScrollLayer::registerDevTools() {
-    devtools::registerNode<AdvancedScrollLayer>([] (AdvancedScrollLayer* node) {
+    /*devtools::registerNode<AdvancedScrollLayer>([] (AdvancedScrollLayer* node) {
 
         devtools::label(fmt::format("Holding: {}", node->m_impl->m_holding).c_str());
         devtools::label(fmt::format("Dragging: {}", node->m_impl->m_dragging).c_str());
@@ -121,18 +133,14 @@ void AdvancedScrollLayer::registerDevTools() {
 
     devtools::registerNode<ScrollContent>([](ScrollContent* node) {
         devtools::property("Scroll Position", node->getScrollLayer()->m_impl->m_scrollPoint);
-    });
-}
-
-AdvancedScrollLayer* AdvancedScrollLayer::create(const CCSize& size, const CullingMethod& cullingMethod) {
-    return create(size, CullingMethod(cullingMethod));
+    });*/
 }
 
 AdvancedScrollLayer* AdvancedScrollLayer::create(const CCSize& size) {
     return create(size, nullptr);
 }
 
-AdvancedScrollLayer* AdvancedScrollLayer::create(const CCSize& size, CullingMethod&& cullingMethod) {
+AdvancedScrollLayer* AdvancedScrollLayer::create(const CCSize& size, CullingMethod cullingMethod) {
     auto ret = new AdvancedScrollLayer();
     if (ret->init(size, std::move(cullingMethod))) {
         ret->autorelease();
@@ -175,18 +183,38 @@ bool AdvancedScrollLayer::init(const CCSize& size, CullingMethod cullingMethod) 
 
     m_impl->m_clickNode = this;
 
-    setTouchPriority(-130);
     setContentSize(size);
     scheduleUpdate();
+
+    addEventListener(KeyboardInputEvent(), [this] (KeyboardInputData& data) {
+        if (!m_impl->m_keyboardEnabled) return;
+        
+        if (data.action == KeyboardInputData::Action::Press || data.action == KeyboardInputData::Action::Repeat) {
+            if (m_impl->m_horizontalScroll && m_impl->m_swapScrollDirection && !m_impl->m_verticalScroll) {
+                if (auto scroll = getVerticalScroll(data.key, true)) {
+                    setScrollX(scroll.unwrap(), true);
+                    return;
+                }
+            }
+            if (m_impl->m_horizontalScroll) {
+                if (auto scroll = getHorizontalScroll(data.key)) {
+                    setScrollX(scroll.unwrap(), true);
+                    return;
+                }
+            }
+            if (m_impl->m_verticalScroll) {
+                if (auto scroll = getVerticalScroll(data.key)) {
+                    setScrollY(scroll.unwrap(), true);
+                    return;
+                }
+            }
+        }
+    });
 
     return true;
 }
 
-void AdvancedScrollLayer::setCullingMethod(const CullingMethod& method) {
-    m_impl->m_cullingMethod = method;
-}
-
-void AdvancedScrollLayer::setCullingMethod(CullingMethod&& method) {
+void AdvancedScrollLayer::setCullingMethod(CullingMethod method) {
     m_impl->m_cullingMethod = std::move(method);
 }
 
@@ -194,23 +222,11 @@ ScrollContent* AdvancedScrollLayer::getContentLayer() {
     return m_impl->m_content;
 }
 
-void AdvancedScrollLayer::handleTouchPrio() {
-    // does nothing
-}
-
-void AdvancedScrollLayer::setLayout(Layout* layout, bool apply, bool respectAnchor) {
-    m_impl->m_content->setLayout(layout, apply, respectAnchor);
-}
-
-void AdvancedScrollLayer::updateLayout(bool updateChildOrder) {
-    m_impl->m_content->updateLayout(updateChildOrder);
-}
-
 void AdvancedScrollLayer::onEnter() {
     CCNode::onEnter();
 
-    CCTouchDispatcher::get()->addTargetedDelegate(this, getTouchPriority(), false);
-    ScrollDispatcher::get()->registerScroll(this);
+    CCTouchDispatcher::get()->addTargetedDelegate(this, 0, false);
+    CCDirector::get()->getMouseDispatcher()->addDelegate(this);
 
     runAction(CallFuncExt::create([this] {
         m_impl->m_prevScrollPoint = CCPoint{FLT_MIN, FLT_MIN};
@@ -223,7 +239,7 @@ void AdvancedScrollLayer::onEnter() {
 void AdvancedScrollLayer::onExit() {
     CCNode::onExit();
     CCTouchDispatcher::get()->removeDelegate(this);
-    ScrollDispatcher::get()->unregisterScroll(this);
+    CCDirector::get()->getMouseDispatcher()->removeDelegate(this);
 }
 
 // We don't actually want AdvancedScrollLayer to have any "real" children for the sake of simplicity.
@@ -282,18 +298,6 @@ void AdvancedScrollLayer::setContentSize(const CCSize& size) {
     update(0);
 }
 
-void AdvancedScrollLayer::collectHandlers(CCNode* node, std::vector<std::pair<CCTouchHandler*, int>>& out) {
-    // does nothing
-}
-
-int AdvancedScrollLayer::getTouchPriority() {
-    return m_impl->m_touchPrio;
-}
-
-void AdvancedScrollLayer::setTouchPriority(int prio) {
-    m_impl->m_touchPrio = prio;
-}
-
 bool AdvancedScrollLayer::isKeyboardEnabled() {
     return m_impl->m_keyboardEnabled;
 }
@@ -319,7 +323,9 @@ void AdvancedScrollLayer::cancelChildrenTouches(CCTouch* touch, CCEvent* event) 
 }
 
 bool AdvancedScrollLayer::ccTouchBegan(CCTouch* touch, CCEvent* event) {
+    if (!alpha::utils::canTouch(this, touch->getLocation())) return false;
     if (!nodeIsVisible(this)) return false;
+    
     m_impl->m_prevTouchLocation = convertToNodeSpace(touch->getLocation());
 
     if (!alpha::utils::isPointInsideNode(m_impl->m_clickNode, touch->getLocation())) {
@@ -728,8 +734,22 @@ void AdvancedScrollLayer::update(float dt) {
     m_impl->m_prevScrollPoint = m_impl->m_scrollPoint;
 }
 
-void AdvancedScrollLayer::scroll(float x, float y) {
-    if (!nodeIsVisible(this)) return;
+bool AdvancedScrollLayer::scrollWheel(float y, float x) {
+    if (!nodeIsVisible(this)) return false;
+    if (!alpha::utils::isPointInsideNode(this, getMousePos())
+        && !alpha::utils::isPointInsideNode(m_impl->m_verticalScrollBar, getMousePos())
+        && !alpha::utils::isPointInsideNode(m_impl->m_horizontalScrollBar, getMousePos())
+    ) return false;
+
+    if (m_impl->m_allowsZoom && !m_impl->m_dragging && (CCKeyboardDispatcher::get()->getControlKeyPressed() || CCKeyboardDispatcher::get()->getCommandKeyPressed())) {
+        zoom(-y);
+        return true;
+    }
+
+    if (CCKeyboardDispatcher::get()->getShiftKeyPressed()) {
+        std::swap(x, y);
+    }
+
     if (m_impl->m_verticalScrollWheel || m_impl->m_horizontalScrollWheel) {
         bool horizontalScrollWheel = m_impl->m_horizontalScrollWheel;
         if (m_impl->m_horizontalScroll && !m_impl->m_verticalScroll) {
@@ -750,10 +770,77 @@ void AdvancedScrollLayer::scroll(float x, float y) {
         m_impl->m_smoothScrollToX = nullptr;
         m_impl->m_smoothScrollToY = nullptr;
 
-        if (m_impl->m_verticalScroll && m_impl->m_verticalScrollWheel) m_impl->m_scrollPoint.y += y;
-        if (m_impl->m_horizontalScroll && horizontalScrollWheel) m_impl->m_scrollPoint.x += x;
+        if (m_impl->m_usesSmoothScroll) {
+            m_impl->m_scrollDecayX += x * GameManager::sharedState()->m_scrollSensitivity;
+            m_impl->m_scrollDecayY += y * GameManager::sharedState()->m_scrollSensitivity;
 
-        constrain(true);
+            if (!m_impl->m_scrolling) {
+                schedule(schedule_selector(AdvancedScrollLayer::updateScrollDecay));
+                m_impl->m_scrolling = true;
+            };
+        }
+        else {
+            if (m_impl->m_verticalScroll && m_impl->m_verticalScrollWheel) m_impl->m_scrollPoint.y += y;
+            if (m_impl->m_horizontalScroll && horizontalScrollWheel) m_impl->m_scrollPoint.x += x;
+
+            constrain(true);
+        }
+    }
+    return true;
+}
+
+void AdvancedScrollLayer::updateScrollDecay(float dt) {
+    auto decayX = m_impl->m_scrollDecayX * dt * 15.f;
+    auto newSpeedX = m_impl->m_scrollDecayX - decayX;
+
+    if (std::abs(newSpeedX) < 0.001f) {
+        decayX += newSpeedX;
+        m_impl->m_scrollDecayX = 0.f;
+    }
+    else {
+        m_impl->m_scrollDecayX = newSpeedX;
+    }
+
+    auto decayY = m_impl->m_scrollDecayY * dt * 15.f;
+    auto newSpeedY = m_impl->m_scrollDecayY - decayY;
+
+    if (std::abs(newSpeedY) < 0.001f) {
+        decayY += newSpeedY;
+        m_impl->m_scrollDecayY = 0.f;
+    }
+    else {
+        m_impl->m_scrollDecayY = newSpeedY;
+    }
+
+    m_impl->m_scrollPoint.x += decayX;
+    m_impl->m_scrollPoint.y += decayY;
+
+    float maxX = m_impl->m_contentContainer->getScaledContentWidth() - getContentWidth();
+    float maxY = m_impl->m_contentContainer->getScaledContentHeight() - getContentHeight();
+
+    if (m_impl->m_scrollPoint.x < 0.f) {
+        m_impl->m_scrollDecayX = 0.f;
+        m_impl->m_scrollPoint.x = 0.f;
+    }
+    else if (m_impl->m_scrollPoint.x > maxX) {
+        m_impl->m_scrollDecayX = 0.f;
+        m_impl->m_scrollPoint.x = maxX;
+    }
+
+    if (m_impl->m_scrollPoint.y < 0.f) {
+        m_impl->m_scrollDecayY = 0.f;
+        m_impl->m_scrollPoint.y = 0.f;
+    }
+    else if (m_impl->m_scrollPoint.y > maxY) {
+        m_impl->m_scrollDecayY = 0.f;
+        m_impl->m_scrollPoint.y = maxY;
+    }
+
+    constrain(true);
+
+    if (m_impl->m_scrollDecayX == 0.f && m_impl->m_scrollDecayY == 0.f) {
+        unschedule(schedule_selector(AdvancedScrollLayer::updateScrollDecay));
+        m_impl->m_scrolling = false;
     }
 }
 
@@ -841,34 +928,7 @@ Result<float> AdvancedScrollLayer::getVerticalScroll(enumKeyCodes key, bool hori
     return Err("Non-scroll Key");
 }
 
-void AdvancedScrollLayer::keyPress(enumKeyCodes key, bool isKeyDown, bool isKeyRepeat) {
-    if (!m_impl->m_keyboardEnabled) return;
-    
-    if (isKeyDown) {
-        if (m_impl->m_horizontalScroll && m_impl->m_swapScrollDirection && !m_impl->m_verticalScroll) {
-            if (auto scroll = getVerticalScroll(key, true)) {
-                setScrollX(scroll.unwrap(), true);
-                return;
-            }
-        }
-        if (m_impl->m_horizontalScroll) {
-            if (auto scroll = getHorizontalScroll(key)) {
-                setScrollX(scroll.unwrap(), true);
-                return;
-            }
-        }
-        if (m_impl->m_verticalScroll) {
-            if (auto scroll = getVerticalScroll(key)) {
-                setScrollY(scroll.unwrap(), true);
-                return;
-            }
-        }
-    }
-}
-
 void AdvancedScrollLayer::zoom(float zoomDelta) {
-    if (!m_impl->m_allowsZoom || m_impl->m_dragging) return;
-
     m_impl->m_inertiaActive = false;
     unschedule(schedule_selector(AdvancedScrollLayer::updateInertia));
 
@@ -1018,14 +1078,6 @@ float AdvancedScrollLayer::getScrollDelta() {
     return m_impl->m_scrollDelta;
 }
 
-void AdvancedScrollLayer::blockTouchBehind(bool blocked) {
-
-}
-
-bool AdvancedScrollLayer::blocksTouchBehind() {
-    return true;
-}
-
 void AdvancedScrollLayer::setMinZoom(float value) {
     m_impl->m_minZoom = value;
 }
@@ -1050,8 +1102,28 @@ void AdvancedScrollLayer::setZoom(float zoom) {
     m_impl->m_contentContainer->setScale(std::clamp(zoom, m_impl->m_minZoom, m_impl->m_maxZoom));
 }
 
+bool AdvancedScrollLayer::touchInsideClip(const cocos2d::CCPoint& pos) {
+    return isPointInsideNode(this, pos);
+}
+
+void AdvancedScrollLayer::setVerticalScrollBar(AdvancedScrollBar* bar) {
+    m_impl->m_verticalScrollBar = bar;
+}
+
+void AdvancedScrollLayer::setHorizontalScrollBar(AdvancedScrollBar* bar) {
+    m_impl->m_horizontalScrollBar = bar;
+}
+
+void AdvancedScrollLayer::setSmoothScrollEnabled(bool enabled) {
+    m_impl->m_usesSmoothScroll = enabled;
+}
+
+bool AdvancedScrollLayer::isSmoothScrollEnabled() {
+    return m_impl->m_usesSmoothScroll;
+}
+
 $on_mod(Loaded) {
-    devtools::waitForDevTools([] {
+    /*devtools::waitForDevTools([] {
         AdvancedScrollLayer::registerDevTools();
-    });
+    });*/
 }

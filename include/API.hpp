@@ -1,11 +1,10 @@
 #pragma once
 
-#include "touch/Touch.hpp"
+#include "touch/TouchAPI.hpp"
 #include "nodes/scroll/Scroll.hpp"
 #include "nodes/Nodes.hpp"
 #include "Actions.hpp"
 #include "Utils.hpp"
-#include "CursorManager.hpp"
 #include "Image.hpp"
 
 namespace alpha {

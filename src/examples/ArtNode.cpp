@@ -1,5 +1,8 @@
 #include <Geode/Geode.hpp>
 #include "API.hpp"
+#include "Geode/loader/Log.hpp"
+#include "Geode/utils/Keyboard.hpp"
+#include "Utils.hpp"
 #include "ArtNode.hpp"
 
 using namespace geode::prelude;
@@ -95,23 +98,24 @@ void ArtNode::addPoint(const CCPoint& p) {
     m_lastPoint = p;
 }
 
-bool ArtNode::clickBegan(TouchEvent* touch) {
+bool ArtNode::clickBegan(Touch* touch) {
+    if (!alpha::utils::canTouch(this, touch->getLocation())) return false;
     if (!alpha::utils::isPointInsideNode(this, touch->getLocation())) return false;
     m_holding = true;
 
-    if (touch->getButton() == MouseButton::LEFT) {
+    if (touch->getButton() == MouseInputData::Button::Left) {
         addPoint(convertToNodeSpace(touch->getLocation()));
     }
-    if (touch->getButton() == MouseButton::RIGHT) {
+    if (touch->getButton() == MouseInputData::Button::Right) {
         log::info("right clicked!!");
     }
 
     switch (touch->getButton()) {
-        case MouseButton::BUTTON3:
+        case MouseInputData::Button::Button4:
             m_brushSize -= 1;
             if (m_brushSize < 1) m_brushSize = 1;
             break;
-        case MouseButton::BUTTON4:
+        case MouseInputData::Button::Button5:
             m_brushSize += 1;
             break;
         default:
@@ -121,37 +125,37 @@ bool ArtNode::clickBegan(TouchEvent* touch) {
     return true;
 };
 
-void ArtNode::clickMoved(TouchEvent* touch) {
-    if (touch->getButton() == MouseButton::LEFT) {
+void ArtNode::clickMoved(Touch* touch) {
+    if (touch->getButton() == MouseInputData::Button::Left) {
         addPoint(convertToNodeSpace(touch->getLocation()));
     }
 }
 
-void ArtNode::clickEnded(TouchEvent* touch) {
+void ArtNode::clickEnded(Touch* touch) {
     m_holding = false;
     m_hasLastPoint = false;
 }
 
-bool ArtNode::mouseEntered(TouchEvent* touch) { 
+bool ArtNode::mouseEntered(Hover* touch) { 
+    //log::info("entered: {}", touch->getLocation());
     return true; 
 }
 
-void ArtNode::mouseExited(TouchEvent* touch) {
-    CursorManager::get()->setCursor(Cursor::ARROW);
+void ArtNode::mouseExited(Hover* touch) {
+    //log::info("exited: {}", touch->getLocation());
 }
 
-void ArtNode::mouseMoved(TouchEvent* touch) {
-    CCPoint local = convertToNodeSpace(touch->getLocation());
-    CursorManager::get()->setCursor(Cursor::CROSS);
+void ArtNode::mouseMoved(Hover* touch) {
+    //log::info("moved: {}", touch->getLocation());
 };
 
 void ArtNode::onEnter() {
     CCLayerColor::onEnter();
-    CCTouchDispatcher::get()->addTargetedDelegate(static_cast<TouchDelegate*>(this), -128, true);
+    CCTouchDispatcher::get()->addTargetedDelegate(static_cast<TouchDelegate*>(this), 0, true);
 }
 
 void ArtNode::onExit() {
     CCLayerColor::onExit();
     CCTouchDispatcher::get()->removeDelegate(static_cast<TouchDelegate*>(this));
-    CursorManager::get()->setCursor(Cursor::ARROW);
+
 }

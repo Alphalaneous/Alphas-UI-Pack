@@ -1,6 +1,11 @@
 #include <Geode/Geode.hpp>
 #include "API.hpp"
-#include <geode.devtools/include/API.hpp>
+#include "Geode/cocos/keypad_dispatcher/CCKeypadDispatcher.h"
+#include "Geode/cocos/robtop/keyboard_dispatcher/CCKeyboardDispatcher.h"
+#include "Geode/ui/Layout.hpp"
+#include "Geode/utils/cocos.hpp"
+#include "Utils.hpp"
+//#include <geode.devtools/include/API.hpp>
 
 using namespace geode::prelude;
 using namespace alpha::prelude;
@@ -19,8 +24,6 @@ struct AdvancedScrollBar::Impl final {
     ScrollBarElement* m_touchedElement;
     ScrollBarElement* m_hoveredElement;
 
-    int m_touchPrio;
-
     bool m_dragging = false;
     float m_touchOffset = 0.f;
     bool m_setNotEmpty = false;
@@ -31,7 +34,7 @@ struct AdvancedScrollBar::Impl final {
 };
 
 void AdvancedScrollBar::registerDevTools() {
-    devtools::registerNode<AdvancedScrollBar>([](AdvancedScrollBar* node) {
+    /*devtools::registerNode<AdvancedScrollBar>([](AdvancedScrollBar* node) {
         devtools::property("Lock to ScrollLayer", node->m_impl->m_lockToScrollLayer);
         devtools::property("Min Handle Height", node->m_impl->m_minHandleHeight);
         devtools::property("Show Arrow Buttons", node->m_impl->m_style.m_showArrowButtons);
@@ -76,7 +79,7 @@ void AdvancedScrollBar::registerDevTools() {
             devtools::property("Top##margins-top", node->m_impl->m_style.m_margins.right);
             devtools::property("Bottom##margins-bottom", node->m_impl->m_style.m_margins.left);
         }
-    });
+    });*/
 }
 
 AdvancedScrollBar::AdvancedScrollBar() : m_impl(std::make_unique<Impl>()) {}
@@ -98,7 +101,6 @@ bool AdvancedScrollBar::init(AdvancedScrollLayer* scrollLayer, ScrollOrientation
 
     m_impl->m_orientation = orientation;
     m_impl->m_scrollLayer = scrollLayer;
-    setTouchPriority(scrollLayer->getTouchPriority());
     setZOrder(scrollLayer->getZOrder());
     setAnchorPoint({0.5f, 0.5f});
 
@@ -106,12 +108,14 @@ bool AdvancedScrollBar::init(AdvancedScrollLayer* scrollLayer, ScrollOrientation
 
     setStyle(RoundedScrollStyle());
 
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         setContentHeight(scrollLayer->getScaledContentHeight());
+        scrollLayer->setVerticalScrollBar(this);
     }
     else {
         setRotation(-90);
         setContentHeight(scrollLayer->getScaledContentWidth());
+        scrollLayer->setHorizontalScrollBar(this);
     }
 
     scheduleUpdate();
@@ -127,7 +131,7 @@ void AdvancedScrollBar::update(float dt) {
         
         float pageCount = 1.f;
 
-        if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+        if (m_impl->m_orientation == ScrollOrientation::Vertical) {
             pageCount = m_impl->m_scrollLayer->getVerticalPages();
         }
         else {
@@ -138,7 +142,7 @@ void AdvancedScrollBar::update(float dt) {
 
         CCPoint scrollLayerBL = {m_impl->m_scrollLayer->boundingBox().getMinX(), m_impl->m_scrollLayer->boundingBox().getMinY()};
 
-        if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+        if (m_impl->m_orientation == ScrollOrientation::Vertical) {
             if ((pageCount <= 1 || !m_impl->m_scrollLayer->hasVerticalScroll()) && m_impl->m_setNotEmpty) {
                 m_impl->m_setNotEmpty = false;
                 setVisible(false);
@@ -180,7 +184,7 @@ void AdvancedScrollBar::update(float dt) {
     float percent   = 0.f;
 
     if (m_impl->m_scrollLayer) {
-        if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+        if (m_impl->m_orientation == ScrollOrientation::Vertical) {
             pageCount = m_impl->m_scrollLayer->getVerticalPages();
             percent = m_impl->m_scrollLayer->getVerticalScrollPercent();
         }
@@ -251,14 +255,14 @@ void AdvancedScrollBar::update(float dt) {
 void AdvancedScrollBar::onEnter() {
     CCNode::onEnter();
     registerWithTouchDispatcher();
-    ScrollDispatcher::get()->registerScroll(this);
+    CCDirector::get()->getMouseDispatcher()->addDelegate(this);
     update(0);
 }
 
 void AdvancedScrollBar::onExit() {
     CCNode::onExit();
     CCTouchDispatcher::get()->removeDelegate(this);
-    ScrollDispatcher::get()->unregisterScroll(this);
+    CCDirector::get()->getMouseDispatcher()->removeDelegate(this);
 }
 
 void AdvancedScrollBar::handleScroll(float y, bool smooth) {
@@ -272,7 +276,7 @@ void AdvancedScrollBar::handleScroll(float y, bool smooth) {
 
     float percent = 1 - (clamp - min) / std::max((max - min), 0.001f);
  
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         float pos = m_impl->m_scrollLayer->getVerticalMax() * percent;
         m_impl->m_scrollLayer->setScrollY(pos, smooth);
     }
@@ -283,7 +287,7 @@ void AdvancedScrollBar::handleScroll(float y, bool smooth) {
 }
 
 void AdvancedScrollBar::addToScroll(float amount) {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         m_impl->m_scrollLayer->setScrollY(m_impl->m_scrollLayer->getScrollPoint().y + amount, true);
     }
     else {
@@ -292,7 +296,9 @@ void AdvancedScrollBar::addToScroll(float amount) {
 }
 
 bool AdvancedScrollBar::ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
+    if (!alpha::utils::canTouch(this, touch->getLocation())) return false;
     if (!nodeIsVisible(this)) return false;
+
     CCPoint local = convertToNodeSpace(touch->getLocation());
 
     bool wasTouched = false;
@@ -350,7 +356,7 @@ void AdvancedScrollBar::ccTouchCancelled(cocos2d::CCTouch *touch, cocos2d::CCEve
     m_impl->m_dragging = false;
 }
 
-bool AdvancedScrollBar::mouseEntered(TouchEvent* touch) {
+bool AdvancedScrollBar::mouseEntered(Hover* touch) {
     if (!nodeIsVisible(this)) return false;
     CCPoint local = convertToNodeSpace(touch->getLocation());
 
@@ -372,7 +378,7 @@ bool AdvancedScrollBar::mouseEntered(TouchEvent* touch) {
     return true;
 }
 
-void AdvancedScrollBar::mouseMoved(TouchEvent* touch) {
+void AdvancedScrollBar::mouseMoved(Hover* touch) {
     CCPoint local = convertToNodeSpace(touch->getLocation());
 
     auto currentHover = m_impl->m_hoveredElement;
@@ -398,29 +404,19 @@ void AdvancedScrollBar::mouseMoved(TouchEvent* touch) {
     if (m_impl->m_hoveredElement) m_impl->m_hoveredElement->onMouseMoveInternal(local);
 }
 
-void AdvancedScrollBar::mouseExited(TouchEvent* touch) {
+void AdvancedScrollBar::mouseExited(Hover* touch) {
     CCPoint local = convertToNodeSpace(touch->getLocation());
     if (m_impl->m_hoveredElement) m_impl->m_hoveredElement->onMouseExitInternal(local);
 }
 
-void AdvancedScrollBar::setTouchPriority(int prio) {
-    m_impl->m_touchPrio = prio;
-}
-
-int AdvancedScrollBar::getTouchPriority() {
-    return m_impl->m_touchPrio;
-}
-
 void AdvancedScrollBar::registerWithTouchDispatcher() {
-    CCTouchDispatcher::get()->addTargetedDelegate(this, getTouchPriority(), true);
+    CCTouchDispatcher::get()->addTargetedDelegate(this, 0, true);
 }
 
-void AdvancedScrollBar::scroll(float x, float y) {
-    m_impl->m_scrollLayer->scroll(x, y);
-}
-
-void AdvancedScrollBar::keyPress(cocos2d::enumKeyCodes key, bool isKeyDown, bool isKeyRepeat) {
-    m_impl->m_scrollLayer->keyPress(key, isKeyDown, isKeyRepeat);
+bool AdvancedScrollBar::scrollWheel(float y, float x) {
+    if (!alpha::utils::isPointInsideNode(this, getMousePos())) return false;
+    m_impl->m_scrollLayer->scrollWheel(y, x);
+    return true;
 }
 
 void AdvancedScrollBar::lockToScrollLayer(bool lock) {
@@ -432,28 +428,28 @@ bool AdvancedScrollBar::isLockedToScrollLayer() {
     return m_impl->m_lockToScrollLayer;
 }
 
-Insets AdvancedScrollBar::getPadding() {
-    if (m_impl->m_orientation == ScrollOrientation::HORIZONTAL) {
-        return alpha::utils::rotateInsetsCCW(m_impl->m_style.m_padding);
+geode::Padding AdvancedScrollBar::getPadding() {
+    if (m_impl->m_orientation == ScrollOrientation::Horizontal) {
+        return alpha::utils::rotatePaddingCCW(m_impl->m_style.m_padding);
     }
     return m_impl->m_style.m_padding;
 }
 
-void AdvancedScrollBar::setPadding(const Insets& padding) {
-    if (m_impl->m_orientation == ScrollOrientation::HORIZONTAL) {
-        m_impl->m_style.m_padding = alpha::utils::rotateInsetsCW(padding);
+void AdvancedScrollBar::setPadding(const geode::Padding& padding) {
+    if (m_impl->m_orientation == ScrollOrientation::Horizontal) {
+        m_impl->m_style.m_padding = alpha::utils::rotatePaddingCW(padding);
         return;
     }
     m_impl->m_style.m_padding = padding;
 }
 
 void AdvancedScrollBar::setPadding(float left, float right, float top, float bottom) {
-    Insets insets = {left, right, top, bottom};
+    geode::Padding insets = {left, top, right, bottom};
     setPadding(insets);
 }
 
 void AdvancedScrollBar::setPaddingLeft(float left) {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         m_impl->m_style.m_padding.left = left;
     }
     else {
@@ -462,7 +458,7 @@ void AdvancedScrollBar::setPaddingLeft(float left) {
 }
 
 void AdvancedScrollBar::setPaddingRight(float right) {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         m_impl->m_style.m_padding.right = right;
     }
     else {
@@ -471,7 +467,7 @@ void AdvancedScrollBar::setPaddingRight(float right) {
 }
 
 void AdvancedScrollBar::setPaddingTop(float top) {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         m_impl->m_style.m_padding.top = top;
     }
     else {
@@ -480,7 +476,7 @@ void AdvancedScrollBar::setPaddingTop(float top) {
 }
 
 void AdvancedScrollBar::setPaddingBottom(float bottom) {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         m_impl->m_style.m_padding.bottom = bottom;
     }
     else {
@@ -489,55 +485,55 @@ void AdvancedScrollBar::setPaddingBottom(float bottom) {
 }
 
 float AdvancedScrollBar::getPaddingLeft() {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         return m_impl->m_style.m_padding.left;
     }
     return m_impl->m_style.m_padding.top;
 }
 
 float AdvancedScrollBar::getPaddingRight() {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         return m_impl->m_style.m_padding.right;
     }
     return m_impl->m_style.m_padding.bottom;
 }
 
 float AdvancedScrollBar::getPaddingTop() {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         return m_impl->m_style.m_padding.top;
     }
     return m_impl->m_style.m_padding.right;
 }
 
 float AdvancedScrollBar::getPaddingBottom() {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         return m_impl->m_style.m_padding.bottom;
     }
     return m_impl->m_style.m_padding.left;
 }
 
-Insets AdvancedScrollBar::getMargins() {
-    if (m_impl->m_orientation == ScrollOrientation::HORIZONTAL) {
-        return alpha::utils::rotateInsetsCCW(m_impl->m_style.m_margins);
+geode::Padding AdvancedScrollBar::getMargins() {
+    if (m_impl->m_orientation == ScrollOrientation::Horizontal) {
+        return alpha::utils::rotatePaddingCCW(m_impl->m_style.m_margins);
     }
     return m_impl->m_style.m_margins;
 }
 
-void AdvancedScrollBar::setMargins(const Insets& margins) {
-    if (m_impl->m_orientation == ScrollOrientation::HORIZONTAL) {
-        m_impl->m_style.m_margins = alpha::utils::rotateInsetsCW(margins);
+void AdvancedScrollBar::setMargins(const geode::Padding& margins) {
+    if (m_impl->m_orientation == ScrollOrientation::Horizontal) {
+        m_impl->m_style.m_margins = alpha::utils::rotatePaddingCW(margins);
         return;
     }
     m_impl->m_style.m_margins = margins;
 }
 
 void AdvancedScrollBar::setMargins(float left, float right, float top, float bottom) {
-    Insets insets = {left, right, top, bottom};
+    geode::Padding insets = {left, top, right, bottom};
     setMargins(insets);
 }
 
 void AdvancedScrollBar::setMarginLeft(float left) {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         m_impl->m_style.m_margins.left = left;
     }
     else {
@@ -546,7 +542,7 @@ void AdvancedScrollBar::setMarginLeft(float left) {
 }
 
 void AdvancedScrollBar::setMarginRight(float right) {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         m_impl->m_style.m_margins.right = right;
     }
     else {
@@ -555,7 +551,7 @@ void AdvancedScrollBar::setMarginRight(float right) {
 }
 
 void AdvancedScrollBar::setMarginTop(float top) {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         m_impl->m_style.m_margins.top = top;
     }
     else {
@@ -564,7 +560,7 @@ void AdvancedScrollBar::setMarginTop(float top) {
 }
 
 void AdvancedScrollBar::setMarginBottom(float bottom) {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         m_impl->m_style.m_margins.bottom = bottom;
     }
     else {
@@ -573,28 +569,28 @@ void AdvancedScrollBar::setMarginBottom(float bottom) {
 }
 
 float AdvancedScrollBar::getMarginLeft() {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         return m_impl->m_style.m_margins.left;
     }
     return m_impl->m_style.m_margins.top;
 }
 
 float AdvancedScrollBar::getMarginRight() {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         return m_impl->m_style.m_margins.right;
     }
     return m_impl->m_style.m_margins.bottom;
 }
 
 float AdvancedScrollBar::getMarginTop() {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         return m_impl->m_style.m_margins.top;
     }
     return m_impl->m_style.m_margins.right;
 }
 
 float AdvancedScrollBar::getMarginBottom() {
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         return m_impl->m_style.m_margins.bottom;
     }
     return m_impl->m_style.m_margins.left;
@@ -614,7 +610,7 @@ void AdvancedScrollBar::setStyle(const ScrollBarStyle& style) {
 
     auto bounds = m_impl->m_scrollLayer->boundingBox();
 
-    if (m_impl->m_orientation == ScrollOrientation::VERTICAL) {
+    if (m_impl->m_orientation == ScrollOrientation::Vertical) {
         setPosition({bounds.getMaxX() + getScaledContentWidth()/2.f + style.m_distanceFromScrollLayer, bounds.getMinY() + m_impl->m_scrollLayer->getScaledContentHeight()/2.f});
     }
     else {
@@ -685,7 +681,7 @@ void AdvancedScrollBar::setUpArrow(ScrollArrowElement* upArrow) {
     upArrow->setScrollBar(this);
     upArrow->setZOrder(1);
     upArrow->setAnchorPoint({0.f, 1.f});
-    upArrow->setDirection(ArrowDirection::UP);
+    upArrow->setDirection(ArrowDirection::Up);
     upArrow->setID("up-arrow"_spr);
     addChild(upArrow);
 
@@ -702,7 +698,7 @@ void AdvancedScrollBar::setDownArrow(ScrollArrowElement* downArrow) {
     downArrow->setScrollBar(this);
     downArrow->setZOrder(1);
     downArrow->setAnchorPoint({0.f, 0.f});
-    downArrow->setDirection(ArrowDirection::DOWN);
+    downArrow->setDirection(ArrowDirection::Down);
     downArrow->setID("down-arrow"_spr);
     addChild(downArrow);
 
@@ -734,7 +730,7 @@ float AdvancedScrollBar::getArrowButtonHeight() {
 }
 
 $on_mod(Loaded) {
-    devtools::waitForDevTools([] {
+    /*devtools::waitForDevTools([] {
         AdvancedScrollBar::registerDevTools();
-    });
+    });*/
 }

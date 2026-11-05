@@ -12,12 +12,12 @@ public:
 	void addPoint(const cocos2d::CCPoint& p);
 	void setHoverColor(const cocos2d::ccColor3B& color);
 
-	virtual bool clickBegan(alpha::dispatcher::TouchEvent* touch) override;
-    virtual void clickMoved(alpha::dispatcher::TouchEvent* touch) override;
-    virtual void clickEnded(alpha::dispatcher::TouchEvent* touch) override;
-	virtual bool mouseEntered(alpha::dispatcher::TouchEvent* touch) override;
-	virtual void mouseExited(alpha::dispatcher::TouchEvent* touch) override;
-	virtual void mouseMoved(alpha::dispatcher::TouchEvent* touch) override;
+	virtual bool clickBegan(alpha::dispatcher::Touch* touch) override;
+    virtual void clickMoved(alpha::dispatcher::Touch* touch) override;
+    virtual void clickEnded(alpha::dispatcher::Touch* touch) override;
+	virtual bool mouseEntered(alpha::dispatcher::Hover* hover) override;
+	virtual void mouseExited(alpha::dispatcher::Hover* hover) override;
+	virtual void mouseMoved(alpha::dispatcher::Hover* hover) override;
 	virtual void onEnter() override;
 	virtual void onExit() override;
 

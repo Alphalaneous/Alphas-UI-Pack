@@ -5,33 +5,25 @@ using namespace geode::prelude;
 using namespace alpha::prelude;
 
 bool TouchDelegate::ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
-    auto mouseEvent = TouchEvent::create(MouseButton::TOUCH);
-    if (auto node = typeinfo_cast<CCNode*>(this)) {
-        if (auto scrollLayer = node->getParentByType<AdvancedScrollLayer>()) {
-            bool insideScroll = alpha::utils::isPointInsideNode(scrollLayer, touch->getLocation());
-            bool insideNode = alpha::utils::isPointInsideNode(node, touch->getLocation());
-
-            if (!insideScroll || !insideNode) return false;
-        }
-    }
-    mouseEvent->setTouchInfo(touch->getLocation());
+    auto mouseEvent = Touch::create(geode::MouseInputData::Button::Left);
+    mouseEvent->setTouchInfo(touch->m_point);
     return clickBegan(mouseEvent);
 }
 
 void TouchDelegate::ccTouchMoved(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
-    auto mouseEvent = TouchEvent::create(MouseButton::TOUCH);
-    mouseEvent->setTouchInfo(touch->getLocation());
+    auto mouseEvent = Touch::create(geode::MouseInputData::Button::Left);
+    mouseEvent->setTouchInfo(touch->m_point);
     clickMoved(mouseEvent);
 }
 
 void TouchDelegate::ccTouchEnded(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
-    auto mouseEvent = TouchEvent::create(MouseButton::TOUCH);
-    mouseEvent->setTouchInfo(touch->getLocation());
+    auto mouseEvent = Touch::create(geode::MouseInputData::Button::Left);
+    mouseEvent->setTouchInfo(touch->m_point);
     clickEnded(mouseEvent);
 }
 
 void TouchDelegate::ccTouchCancelled(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
-    auto mouseEvent = TouchEvent::create(MouseButton::TOUCH);
-    mouseEvent->setTouchInfo(touch->getLocation());
-    clickEnded(mouseEvent);
+    auto mouseEvent = Touch::create(geode::MouseInputData::Button::Left);
+    mouseEvent->setTouchInfo(touch->m_point);
+    clickCancelled(mouseEvent);
 }

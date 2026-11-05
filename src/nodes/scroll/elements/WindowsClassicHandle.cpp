@@ -50,7 +50,7 @@ void WindowsClassicHandle::onRelease(const cocos2d::CCPoint& pos) {
 void WindowsClassicHandle::setScrollBar(AdvancedScrollBar* scrollBar) {
     ScrollBarElement::setScrollBar(scrollBar);
 
-    if (scrollBar->getOrientation() == ScrollOrientation::HORIZONTAL) {
+    if (scrollBar->getOrientation() == ScrollOrientation::Horizontal) {
         m_impl->m_background->setScaleX(-0.5);
     }
 }

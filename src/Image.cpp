@@ -34,10 +34,10 @@ unsigned int Image::getHeight() const {
     return m_impl->m_height;
 }
 
-geode::Result<> Image::saveToFile(const std::filesystem::path& path) {
-    auto file = std::fopen(string::pathToString(path).c_str(), "wb");
+geode::Result<> Image::saveToFile(asp::fs::PathView path) {
+    auto file = std::fopen(path.string().c_str(), "wb");
     if (!file) {
-        return geode::Err("Couldn't open file: {}", string::pathToString(path).c_str());
+        return geode::Err("Couldn't open file: {}", path.string().c_str());
     }
 
     auto context = spng_ctx_new(SPNG_CTX_ENCODER);

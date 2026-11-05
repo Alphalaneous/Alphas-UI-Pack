@@ -1,259 +1,433 @@
 #include "touch/TouchDispatcher.hpp"
 #include <Geode/Geode.hpp>
 #include "API.hpp"
+#include "Geode/cocos/robtop/touch_dispatcher/CCTouchClipper.h"
+#include "Geode/cocos/touch_dispatcher/CCTouchDelegateProtocol.h"
+#include "Geode/loader/Log.hpp"
+#include "Utils.hpp"
+#include "touch/Hover.hpp"
+#include "touch/TouchDelegate.hpp"
 
 using namespace geode::prelude;
 using namespace alpha::prelude;
 
 struct TouchDispatcher::Impl final {
-    std::unordered_map<MouseButton, bool> m_states;
-    std::unordered_map<MouseButton, bool> m_inputStates;
-    std::unordered_map<MouseButton, Ref<TouchEvent>> m_clicks;
+    std::unordered_map<geode::MouseInputData::Button, bool> m_inputStates;
+    std::unordered_map<geode::MouseInputData::Button, Ref<Touch>> m_clicks;
 
     CCPoint m_lastPos;
-    bool m_shouldRearrangeHandlers;
 
 	CCTouchDispatcher* m_dispatcher;
-	Ref<TouchEvent> m_hoverTouch;
+	Ref<Hover> m_hoverTouch;
 
     ListenerHandle m_touchListener;
+    ListenerHandle m_moveListener;
 };
 
-TouchDispatcher::TouchDispatcher() : m_impl(std::make_unique<Impl>()) {}
-TouchDispatcher::~TouchDispatcher() = default;
-
-TouchDispatcher* TouchDispatcher::get() {
-    static TouchDispatcher instance;
-    static bool initialized = false;
-    if (!initialized) {
-        instance.init();
-        initialized = true;
-    }
-    return &instance;
-}
-
-void TouchDispatcher::init() {
+TouchDispatcher::TouchDispatcher() : m_impl(std::make_unique<Impl>()) {
     m_impl->m_dispatcher = CCTouchDispatcher::get();
-    m_impl->m_hoverTouch = TouchEvent::create(MouseButton::HOVER);
+    m_impl->m_hoverTouch = Hover::create();
 
     m_impl->m_touchListener = MouseInputEvent().listen([this] (geode::MouseInputData& data) {
         bool pressed = data.action == geode::MouseInputData::Action::Press;
+        auto origStates = m_impl->m_inputStates;
 
         switch (data.button) {
             case geode::MouseInputData::Button::Middle: {
-                m_impl->m_inputStates[MouseButton::MIDDLE] = pressed;
+                m_impl->m_inputStates[geode::MouseInputData::Button::Middle] = pressed;
                 break;
             }
             case geode::MouseInputData::Button::Right: {
-                m_impl->m_inputStates[MouseButton::RIGHT] = pressed;
+                m_impl->m_inputStates[geode::MouseInputData::Button::Right] = pressed;
                 break;
             }
             case geode::MouseInputData::Button::Button4: {
-                m_impl->m_inputStates[MouseButton::BUTTON3] = pressed;
+                m_impl->m_inputStates[geode::MouseInputData::Button::Button4] = pressed;
                 break;
             }
             case geode::MouseInputData::Button::Button5: {
-                m_impl->m_inputStates[MouseButton::BUTTON4] = pressed;
+                m_impl->m_inputStates[geode::MouseInputData::Button::Button5] = pressed;
                 break;
             }
             default: break;
         }
+
+        auto pos = getMousePos();
+        for (const auto& [button, state] : m_impl->m_inputStates) {
+            if (state != origStates[button]) {
+                if (state) {
+                    auto click = Touch::create(button);
+                    click->setTouchInfo(pos);
+                    m_impl->m_clicks[button] = click;
+                    clicks(click, TouchType::ClickBegan);
+                }
+                else {
+                    clicks(m_impl->m_clicks[button], TouchType::ClickEnded);
+                    m_impl->m_clicks.erase(button);
+                }
+            }
+        }
+        
+        if (m_impl->m_lastPos != pos) {
+            for (const auto& [button, click] : m_impl->m_clicks) {
+                click->setTouchInfo(pos);
+                clicks(click, TouchType::ClickMoved);
+            }
+        }
+
+        m_impl->m_lastPos = pos;
+    });
+
+    m_impl->m_moveListener = MouseMoveEvent().listen([this] (int32_t x, int32_t y) {
+        if (m_impl->m_dispatcher->m_bDispatchEvents) {
+            m_impl->m_hoverTouch->setTouchInfo(getMousePos());
+            hovers(m_impl->m_hoverTouch);
+        }
     });
 }
+TouchDispatcher::~TouchDispatcher() = default;
 
-void TouchDispatcher::rearrangeHandlers() {
-    if (m_impl->m_shouldRearrangeHandlers) {
-        auto handlers = CCArrayExt<CCTouchHandler*>(m_impl->m_dispatcher->m_pTargetedHandlers);
-        std::sort(handlers.begin(), handlers.end(), [](CCTouchHandler* a, CCTouchHandler* b) {
-            return a->getPriority() < b->getPriority();
-        });
-        m_impl->m_shouldRearrangeHandlers = false;
-    }
+TouchDispatcher* TouchDispatcher::get() {
+    static TouchDispatcher instance;
+    return &instance;
 }
 
-void TouchDispatcher::hovers(TouchEvent* touch) {
-    if (!touch) return;
-    
-    bool hoverClaimed = false;
+// yoinked from ZOrderTouchPrio.cpp in Geode, modified to support all mouse buttons
+namespace {
+    struct ParentPath {
+        std::vector<CCNode*> m_path;
+        CCTargetedTouchHandler* m_handler = nullptr;
+        mutable bool m_hasInvalidRoot = false;
 
-    for (auto handler : CCArrayExt<CCTargetedTouchHandler*>(m_impl->m_dispatcher->m_pTargetedHandlers)) {
-        if (!handler) continue;
-        
-        auto node = typeinfo_cast<CCNode*>(handler->getDelegate());
-        if (!node) continue;
+        ParentPath(CCTargetedTouchHandler* handler) : m_handler(handler) {}
 
-        const CCPoint location = touch->getLocation();
+        ParentPath(ParentPath&& other) = default;
+        ParentPath& operator=(ParentPath&& other) = default;
 
-        bool inside = alpha::utils::isPointInsideNode(node, location);
-        auto scrollLayer = node->getParentByType<AdvancedScrollLayer>();
-
-        if (scrollLayer) {
-            inside = alpha::utils::isPointInsideNode(scrollLayer, location) && inside;
+        ParentPath(CCNode* node, CCTargetedTouchHandler* handler) : m_handler(handler) {
+            while (node) {
+                m_path.push_back(node);
+                node = node->getParent();
+            }
         }
 
-        const bool swallows = handler->m_bSwallowsTouches;
+        static std::optional<ParentPath> filtered(CCNode* node, CCTargetedTouchHandler* handler, CCNode* filter) {
+            ParentPath ret{handler};
+            bool confirmed = false;
+            while (node) {
+                ret.m_path.push_back(node);
+                if (node == filter) confirmed = true;
+                node = node->getParent();
+            }
+            if (confirmed) return ret;
+            return std::nullopt;
+        }
 
-        auto delegate = typeinfo_cast<TouchDelegate*>(handler->getDelegate());
-        if (!delegate) {
-            if (swallows && inside) {
+        CCNode* leaf() const {
+            return m_path.empty() ? nullptr : m_path.front();
+        }
+
+        CCNode* root() const {
+            return m_path.empty() ? nullptr : m_path.back();
+        }
+
+        CCNode* nth(size_t n) const {
+            return (n < m_path.size()) ? m_path[m_path.size() - 1 - n] : nullptr;
+        }
+
+        bool swallows() const {
+            return m_handler->m_bSwallowsTouches;
+        }
+
+        bool isStealer(CCNode* node) const {
+            if (node->getUserFlag("steals-touch"_spr)) return true;
+
+            if (typeinfo_cast<TableView*>(node)) return true;
+            if (typeinfo_cast<BoomScrollLayer*>(node)) return true;
+
+            if (auto scrollLayer = typeinfo_cast<ScrollLayer*>(node)) {
+                return scrollLayer->isStealingTouches();
+            }
+            return false;
+        }
+
+        bool steals() const {
+            if (swallows()) return false;
+
+            if (auto leaf = this->leaf()) {
+                if (isStealer(leaf)) return true;
+            }
+
+            return false;
+        }
+
+        bool hasValidRoot() {
+            if (m_hasInvalidRoot) return false;
+
+            auto director = CCDirector::get();
+            const auto rootOrder = std::array<CCNode*, 2>{director->m_pRunningScene, director->m_pNotificationNode};
+            auto thisRootIt = std::find(rootOrder.begin(), rootOrder.end(), root());
+
+            if (thisRootIt == rootOrder.end()) {
+                m_hasInvalidRoot = true;
+                return false;
+            }
+            return true;
+        }
+
+        bool compareRoots(const ParentPath& other) const {
+            if (root() == other.root()) return false;
+
+            auto director = CCDirector::get();
+            const std::array<CCNode*, 2> rootOrder = {director->m_pRunningScene, director->m_pNotificationNode};
+            auto thisRootIt = std::find(rootOrder.begin(), rootOrder.end(), root());
+            auto otherRootIt = std::find(rootOrder.begin(), rootOrder.end(), other.root());
+
+            if (thisRootIt == rootOrder.end()) {
+                m_hasInvalidRoot = true;
+                return false;
+            }
+            if (otherRootIt == rootOrder.end()) {
+                other.m_hasInvalidRoot = true;
+                return false;
+            }
+
+            return thisRootIt > otherRootIt;
+        }
+
+        bool operator<(const ParentPath& other) const {
+            if (root() != other.root()) {
+                return compareRoots(other);
+            }
+
+            size_t maxLength = std::max(m_path.size(), other.m_path.size());
+            for (size_t divergeIndex = 1; divergeIndex < maxLength; ++divergeIndex) {
+                auto thisParent = nth(divergeIndex);
+                auto otherParent = other.nth(divergeIndex);
+
+                if (!thisParent && otherParent) {
+                    return steals();
+                }
+                else if (!otherParent && thisParent) {
+                    return !other.steals();
+                }
+                else if (thisParent != otherParent) {
+                    if (thisParent->getZOrder() == otherParent->getZOrder()) {
+                        return thisParent->getOrderOfArrival() > otherParent->getOrderOfArrival();
+                    }
+                    return thisParent->getZOrder() > otherParent->getZOrder();
+                }
+            }
+            return false;
+        }
+    };
+
+    std::vector<ParentPath> getRegisteredPaths(CCArray* handlers) {
+        std::vector<ParentPath> paths;
+        for (auto handler : CCArrayExt<CCTargetedTouchHandler*>(handlers)) {
+            if (!handler) continue;
+
+            auto delegate = handler->getDelegate();
+            if (!delegate) continue;
+
+            auto node = typeinfo_cast<CCNode*>(delegate);
+            if (!node) continue;
+
+            auto path = ParentPath(node, handler);
+            if (path.hasValidRoot()) {
+                paths.push_back(std::move(path));
+            }
+        }
+        std::sort(paths.begin(), paths.end());
+        return paths;
+    }
+
+    bool handleTouch(Touch* touch, TouchType touchType, const std::vector<ParentPath>& registeredPaths) {
+        bool touchClaimed = false;
+
+        for (auto& path : registeredPaths) {
+            auto delegate = typeinfo_cast<TouchDelegate*>(path.m_handler->getDelegate());
+            if (!delegate) continue;
+
+            auto claimedTouches = path.m_handler->m_pClaimedTouches;
+            auto swallowsTouches = path.m_handler->m_bSwallowsTouches;
+
+            if (path.m_hasInvalidRoot) continue;
+
+            auto node = typeinfo_cast<CCNode*>(delegate);
+            if (!node) continue;
+            
+            bool claimed = false;
+            if (touchType == alpha::dispatcher::TouchType::ClickBegan) {
+                claimed = delegate->clickBegan(touch);
+
+                if (claimed) {
+                    claimedTouches->addObject(touch);
+                }
+            }
+            else if (claimedTouches->containsObject(touch)) {
+                claimed = true;
+
+                switch (touchType) {
+                    case alpha::dispatcher::TouchType::ClickMoved: 
+                        delegate->clickMoved(touch); 
+                        break;
+                    case alpha::dispatcher::TouchType::ClickEnded:
+                        delegate->clickEnded(touch);
+                        claimedTouches->removeObject(touch);
+                        break;
+                    case alpha::dispatcher::TouchType::ClickCancelled:
+                        delegate->clickCancelled(touch);
+                        claimedTouches->removeObject(touch);
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            if (claimed && swallowsTouches) {
+                touchClaimed = true;
+                break;
+            }
+        }
+        return touchClaimed;
+    }
+
+    bool handleHover(Hover* hover, const std::vector<ParentPath>& registeredPaths) {
+        bool hoverClaimed = false;
+
+        for (auto& path : registeredPaths) {
+            auto delegate = typeinfo_cast<CCTouchDelegate*>(path.m_handler->getDelegate());
+
+            if (!delegate) continue;
+
+            if (path.m_hasInvalidRoot) continue;
+
+            auto node = typeinfo_cast<CCNode*>(delegate);
+            if (!node) continue;
+
+            auto claimedTouches = path.m_handler->m_pClaimedTouches;
+            auto swallowsTouches = path.m_handler->m_bSwallowsTouches;
+
+            bool inside = alpha::utils::isPointInsideNode(node, hover->getLocation()) && alpha::utils::canTouch(node, hover->getLocation());
+
+            auto touchDelegate = typeinfo_cast<TouchDelegate*>(delegate);
+            if (!touchDelegate) {
+                if (swallowsTouches && inside) {
+                    hoverClaimed = true;
+                }
+                continue;
+            }
+
+            bool entered = inside && !hoverClaimed;
+            bool isClaimed = claimedTouches->containsObject(hover) && nodeIsVisible(node);
+
+            if (inside && !isClaimed) {
+                isClaimed = touchDelegate->mouseEntered(hover);
+                if (isClaimed) {
+                    claimedTouches->addObject(hover);
+                }
+            }
+            if (isClaimed && !entered) {
+                touchDelegate->mouseExited(hover);
+                claimedTouches->removeObject(hover);
+            }
+
+            if (entered && isClaimed) {
+                touchDelegate->mouseMoved(hover);
+            }
+
+            if (isClaimed && swallowsTouches) {
                 hoverClaimed = true;
-            }
-            continue;
-        }
-
-        auto claimed = handler->getClaimedTouches();
-        if (!claimed) {
-            continue;
-        }
-
-        bool entered = inside && !hoverClaimed;
-        bool isClaimed = claimed->containsObject(touch) && nodeIsVisible(node);
-
-        if (entered && !isClaimed) {
-            isClaimed = delegate->mouseEntered(touch);
-            if (isClaimed) {
-                claimed->addObject(touch);
+                break;
             }
         }
-        if (isClaimed && !entered) {
-            delegate->mouseExited(touch);
-            claimed->removeObject(touch);
-        }
-
-        if (entered && isClaimed) {
-            delegate->mouseMoved(touch);
-        }
-
-        if (isClaimed && swallows) {
-            hoverClaimed = true;
-        }
+        return hoverClaimed;
     }
 }
 
-void TouchDispatcher::clicks(TouchEvent* touch, TouchType type) {
+void TouchDispatcher::cleanupHandlers() {
+    if (m_impl->m_dispatcher->m_bToRemove) {
+        m_impl->m_dispatcher->m_bToRemove = false;
+        for (unsigned int i = 0; i < m_impl->m_dispatcher->m_pHandlersToRemove->num; ++i) {
+            for (auto handler : CCArrayExt<CCTargetedTouchHandler*>(m_impl->m_dispatcher->m_pTargetedHandlers)) {
+                if (handler->getDelegate() == m_impl->m_dispatcher->m_pHandlersToRemove->arr[i]) {
+                    m_impl->m_dispatcher->m_pTargetedHandlers->removeObject(handler);
+                    break;
+                }
+            }
+            for (auto handler : CCArrayExt<CCStandardTouchHandler*>(m_impl->m_dispatcher->m_pStandardHandlers)) {
+                if (handler->getDelegate() == m_impl->m_dispatcher->m_pHandlersToRemove->arr[i]) {
+                    m_impl->m_dispatcher->m_pStandardHandlers->removeObject(handler);
+                    break;
+                }
+            }
+        }
+        m_impl->m_dispatcher->m_pHandlersToRemove->num = 0;
+    }
+
+    if (m_impl->m_dispatcher->m_bToAdd) {
+        m_impl->m_dispatcher->m_bToAdd = false;
+        for (auto handler : CCArrayExt<CCTouchHandler*>(m_impl->m_dispatcher->m_pHandlersToAdd)) {
+            if (!handler) continue;
+
+            if (typeinfo_cast<CCTargetedTouchHandler*>(handler)) {
+                if (!m_impl->m_dispatcher->m_pTargetedHandlers->containsObject(handler)) {
+                    m_impl->m_dispatcher->m_pTargetedHandlers->addObject(handler);
+                }
+            }
+            else {
+                if (!m_impl->m_dispatcher->m_pStandardHandlers->containsObject(handler)) {
+                    m_impl->m_dispatcher->m_pStandardHandlers->addObject(handler);
+                }
+            }
+        }
+
+        m_impl->m_dispatcher->m_pHandlersToAdd->removeAllObjects();
+    }
+
+    if (m_impl->m_dispatcher->m_bToQuit) {
+        m_impl->m_dispatcher->m_bToQuit = false;
+        m_impl->m_dispatcher->m_pStandardHandlers->removeAllObjects();
+        m_impl->m_dispatcher->m_pTargetedHandlers->removeAllObjects();
+    }
+
+    m_impl->m_dispatcher->m_bLocked = false;
+}
+
+void TouchDispatcher::hovers(Hover* hover) {
+    if (!hover) return;
+
     if (m_impl->m_dispatcher->m_pTargetedHandlers->count() == 0) return;
 
     m_impl->m_dispatcher->m_bLocked = true;
     
-    const auto button = touch->getButton();
-    const CCPoint location = touch->getLocation();
+    if (m_impl->m_dispatcher->m_pTargetedHandlers->count() > 0) {
+        Ref<CCArray> handlersCopy = CCTouchDispatcher::get()->m_pTargetedHandlers->shallowCopy();
+        auto registeredPaths = ::getRegisteredPaths(CCTouchDispatcher::get()->m_pTargetedHandlers);
 
-    bool clickBlocked = false;
+        ::handleHover(hover, registeredPaths);
+    }
 
-    for (auto handler : CCArrayExt<CCTargetedTouchHandler*>(m_impl->m_dispatcher->m_pTargetedHandlers)) {
-        bool touchClaimed = false;
-        auto node = typeinfo_cast<CCNode*>(handler->getDelegate());
-        bool insideNode = true;
-        if (node) insideNode = alpha::utils::isPointInsideNode(node, location);
+    cleanupHandlers();
+}
 
-        auto delegate = typeinfo_cast<TouchDelegate*>(handler->getDelegate());
-        if (!delegate) {
-            const bool swallows = handler->m_bSwallowsTouches;
+void TouchDispatcher::clicks(Touch* touch, TouchType type) {
+    if (m_impl->m_dispatcher->m_pTargetedHandlers->count() == 0) return;
 
-            if (swallows && insideNode) {
-                clickBlocked = true;
-            }
-            continue;
-        }
+    m_impl->m_dispatcher->m_bLocked = true;
 
-        if (node) {
-            if (auto scrollLayer = node->getParentByType<AdvancedScrollLayer>()) {
-                bool inside = alpha::utils::isPointInsideNode(scrollLayer, location) && insideNode;
-                if (!inside) continue;
-            }
-        }
+    if (m_impl->m_dispatcher->m_pTargetedHandlers->count() > 0) {
+        Ref<CCArray> handlersCopy = CCTouchDispatcher::get()->m_pTargetedHandlers->shallowCopy();
+        auto registeredPaths = ::getRegisteredPaths(CCTouchDispatcher::get()->m_pTargetedHandlers);
 
-        auto claimed = handler->getClaimedTouches();
-        if (!claimed) {
-            continue;
-        }
-
-        if (type == TouchType::CLICK_BEGAN && !clickBlocked) {
-            touchClaimed = delegate->clickBegan(touch);
-
-            if (touchClaimed) {
-                claimed->addObject(touch);
-            }
-        }
-        else if (claimed->containsObject(touch)) {
-            touchClaimed = true;
-
-            switch (type) {
-                case TouchType::CLICK_MOVED: 
-                    delegate->clickMoved(touch);
-                    break;
-                case TouchType::CLICK_ENDED: 
-                    delegate->clickEnded(touch);
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        if (touchClaimed && handler->m_bSwallowsTouches) {
-            break;
-        }
+        ::handleTouch(touch, type, registeredPaths);
     }
     
-    m_impl->m_dispatcher->m_bLocked = false;
-}
-
-void TouchDispatcher::pollInput(const CCPoint& pos) {
-    auto origStates = m_impl->m_states;
-
-    m_impl->m_states[MouseButton::MIDDLE]   = m_impl->m_inputStates[MouseButton::MIDDLE];
-    m_impl->m_states[MouseButton::RIGHT]    = m_impl->m_inputStates[MouseButton::RIGHT];
-    m_impl->m_states[MouseButton::BUTTON3]  = m_impl->m_inputStates[MouseButton::BUTTON3];
-    m_impl->m_states[MouseButton::BUTTON4]  = m_impl->m_inputStates[MouseButton::BUTTON4];
-
-    for (const auto& [button, state] : m_impl->m_states) {
-        if (state != origStates[button]) {
-            if (state) {
-                auto click = TouchEvent::create(button);
-                click->setTouchInfo(pos);
-                m_impl->m_clicks[button] = click;
-                clicks(click, TouchType::CLICK_BEGAN);
-            }
-            else {
-                clicks(m_impl->m_clicks[button], TouchType::CLICK_ENDED);
-                m_impl->m_clicks.erase(button);
-            }
-        }
-    }
-    
-    if (m_impl->m_lastPos != pos) {
-        for (const auto& [button, click] : m_impl->m_clicks) {
-            click->setTouchInfo(pos);
-            clicks(click, TouchType::CLICK_MOVED);
-        }
-    }
-
-    m_impl->m_lastPos = pos;
-}
-
-void TouchDispatcher::handleHover(const CCPoint& pos) {
-    m_impl->m_hoverTouch->setTouchInfo(pos);
-    hovers(m_impl->m_hoverTouch);
-}
-
-void TouchDispatcher::update(float dt) {
-    if (m_impl->m_dispatcher->m_bToAdd) {
-        m_impl->m_dispatcher->m_bToAdd = false;
-        for (auto handler : CCArrayExt<CCTouchHandler*>(m_impl->m_dispatcher->m_pHandlersToAdd)) {
-            m_impl->m_dispatcher->m_pTargetedHandlers->addObject(handler);
-            m_impl->m_shouldRearrangeHandlers = true;
-        }
-    }
-    rearrangeHandlers();
-
-    if (m_impl->m_dispatcher->m_bDispatchEvents) {
-        auto mousePos = getMousePos();
-
-        handleHover(mousePos);
-        pollInput(mousePos);
-    }
+    cleanupHandlers();
 }
 
 $on_mod(Loaded) {
-	CCScheduler::get()->scheduleUpdateForTarget(TouchDispatcher::get(), INT_MIN, false);
+    // init it :3
+    TouchDispatcher::get();
 }

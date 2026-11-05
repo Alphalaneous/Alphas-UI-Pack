@@ -64,7 +64,7 @@ void BasicScrollArrow::onRelease(const cocos2d::CCPoint& pos) {
 
 void BasicScrollArrow::setDirection(ArrowDirection direction) {
     ScrollArrowElement::setDirection(direction);
-    if (direction == ArrowDirection::DOWN) {
+    if (direction == ArrowDirection::Down) {
         m_impl->m_arrow->setFlipY(true);
     }
 }

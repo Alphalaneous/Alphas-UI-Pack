@@ -1,3 +1,6 @@
+# 1.5.0
+- 2.2091 Support
+
 # 1.4.6
 - Add AdvancedScrollLayer::ScrollEvent to listen for when a scroll happens
 

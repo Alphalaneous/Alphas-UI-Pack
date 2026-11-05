@@ -1,5 +1,6 @@
 #include <Geode/Geode.hpp>
 #include "Utils.hpp"
+#include "Geode/cocos/robtop/touch_dispatcher/CCTouchClipper.h"
 
 bool alpha::utils::isPointInsideNode(cocos2d::CCNode* node, const cocos2d::CCPoint& touch) {
     if (!node) return false;
@@ -43,22 +44,29 @@ cocos2d::CCRect alpha::utils::rectToWorld(cocos2d::CCNode* node, float multiplie
     return cocos2d::CCRect(minX, minY, maxX - minX, maxY - minY);
 }
 
-alpha::ui::Insets alpha::utils::rotateInsetsCW(const alpha::ui::Insets& insets) {
+geode::Padding alpha::utils::rotatePaddingCW(const geode::Padding& insets) {
     return {
         insets.bottom,
-        insets.top,
         insets.left,
+        insets.top,
         insets.right
     };
 }
 
-alpha::ui::Insets alpha::utils::rotateInsetsCCW(const alpha::ui::Insets& insets) {
+geode::Padding alpha::utils::rotatePaddingCCW(const geode::Padding& insets) {
     return {
         insets.top,
-        insets.bottom,
         insets.right,
+        insets.bottom,
         insets.left
     };
+}
+
+bool alpha::utils::canTouch(cocos2d::CCNode* node, const cocos2d::CCPoint& pos) {
+    auto clipper = node->getParentByType<cocos2d::CCTouchClipper>();
+    if (!clipper) return true;
+
+    return clipper->touchInsideClip(pos);
 }
 
 #ifdef GEODE_IS_WINDOWS

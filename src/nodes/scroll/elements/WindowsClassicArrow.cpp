@@ -49,7 +49,7 @@ void WindowsClassicArrow::setContentSize(const CCSize& contentSize) {
     CCPoint offset = {0, 0};
 
     if (m_impl->m_holding) {
-        if (getScrollbar()->getOrientation() == ScrollOrientation::HORIZONTAL) {
+        if (getScrollbar()->getOrientation() == ScrollOrientation::Horizontal) {
             offset = CCPoint{-0.5f, -0.5f};
         }
         else {
@@ -83,7 +83,7 @@ void WindowsClassicArrow::onRelease(const cocos2d::CCPoint& pos) {
 
 void WindowsClassicArrow::setDirection(ArrowDirection direction) {
     ScrollArrowElement::setDirection(direction);
-    if (direction == ArrowDirection::DOWN) {
+    if (direction == ArrowDirection::Down) {
         m_impl->m_arrow->setFlipY(true);
     }
 }
@@ -91,7 +91,7 @@ void WindowsClassicArrow::setDirection(ArrowDirection direction) {
 void WindowsClassicArrow::setScrollBar(AdvancedScrollBar* scrollBar) {
     ScrollBarElement::setScrollBar(scrollBar);
 
-    if (scrollBar->getOrientation() == ScrollOrientation::HORIZONTAL) {
+    if (scrollBar->getOrientation() == ScrollOrientation::Horizontal) {
         m_impl->m_background->setScaleX(-0.5);
     }
 }

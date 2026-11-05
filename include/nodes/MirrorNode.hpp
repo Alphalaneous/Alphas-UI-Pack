@@ -36,19 +36,14 @@ public:
     void ccTouchMoved(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
     void ccTouchEnded(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
     void ccTouchCancelled(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
-	bool mouseEntered(dispatcher::TouchEvent* touch) override;
-	void mouseExited(dispatcher::TouchEvent* touch) override;
-	void mouseMoved(dispatcher::TouchEvent* touch) override;
+	bool mouseEntered(dispatcher::Hover* hover) override;
+	void mouseExited(dispatcher::Hover* hover) override;
+	void mouseMoved(dispatcher::Hover* hover) override;
 
-    void update(float dt) override;
-    void onEnter() override;
-    void onExit() override;
-    
+    virtual void update(float dt) override;
+    virtual void onEnter() override;
+    virtual void onExit() override;
     virtual void registerWithTouchDispatcher();
-
-    /// Sets the touch priority.
-    void setTouchPriority(int priority);
-    int getTouchPriority();
 
     /// Sets if the original node passed in should still be visible in the node tree, setting to false will force setVisible(false) on it every frame.
     void showOriginal(bool show);
@@ -80,7 +75,6 @@ public:
     Image* captureImage();
 
 protected:
-
     /// runs touch forwarding on node
     template <class Delegate>
     void forwardTouch(geode::Function<void(Delegate* delegate)> callback) {

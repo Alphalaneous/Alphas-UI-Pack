@@ -3,6 +3,7 @@
 #include <Geode/Geode.hpp>
 #include "API.hpp"
 #include "ArtNode.hpp"
+#include "Geode/utils/Keyboard.hpp"
 #include "SimpleColorPicker.hpp"
 
 using namespace geode::prelude;
@@ -43,9 +44,9 @@ struct WindowsClassicButton : public CCNodeRGBA, public TouchDelegate {
         return true;
     }
 
-    virtual bool clickBegan(TouchEvent* touch) override { 
+    virtual bool clickBegan(Touch* touch) override { 
         if (!alpha::utils::isPointInsideNode(this, touch->getLocation())) return false;
-        if (touch->getButton() != MouseButton::LEFT) return true;
+        if (touch->getButton() != geode::MouseInputData::Button::Left) return true;
         m_background->setRotation(180);
 
         auto offset = CCPoint{0.5f, -0.5f};
@@ -54,8 +55,8 @@ struct WindowsClassicButton : public CCNodeRGBA, public TouchDelegate {
         return true; 
     }
 
-	virtual void clickMoved(TouchEvent* touch) override {
-        if (touch->getButton() != MouseButton::LEFT) return;
+	virtual void clickMoved(Touch* touch) override {
+        if (touch->getButton() != geode::MouseInputData::Button::Left) return;
         if (alpha::utils::isPointInsideNode(this, touch->getLocation())) {
             auto offset = CCPoint{0.5f, -0.5f};
             m_closeSpr->setPosition((getContentSize()/2) + offset);
@@ -67,9 +68,9 @@ struct WindowsClassicButton : public CCNodeRGBA, public TouchDelegate {
         }
     }
 
-	virtual void clickEnded(TouchEvent* touch) override {
+	virtual void clickEnded(Touch* touch) override {
         if (!alpha::utils::isPointInsideNode(this, touch->getLocation())) return;
-        if (touch->getButton() != MouseButton::LEFT) return;
+        if (touch->getButton() != geode::MouseInputData::Button::Left) return;
 
         if (m_callback) m_callback();
 
@@ -127,9 +128,9 @@ struct ScrollTestLayer : public CCNode, public TouchDelegate {
         return nullptr;
     }
 
-	virtual bool clickBegan(TouchEvent* touch) override { 
+	virtual bool clickBegan(Touch* touch) override { 
         if (!alpha::utils::isPointInsideNode(this, touch->getLocation())) return false;
-        if (touch->getButton() != MouseButton::LEFT) return true;
+        if (touch->getButton() != geode::MouseInputData::Button::Left) return true;
         
         if (!alpha::utils::isPointInsideNode(m_container, touch->getLocation())) {
             if (alpha::utils::isPointInsideNode(m_titleBar, touch->getLocation())) {
@@ -145,8 +146,8 @@ struct ScrollTestLayer : public CCNode, public TouchDelegate {
         return true;
     }
 
-    virtual void clickMoved(TouchEvent* touch) override {
-        if (touch->getButton() != MouseButton::LEFT) return;
+    virtual void clickMoved(Touch* touch) override {
+        if (touch->getButton() != geode::MouseInputData::Button::Left) return;
 
         if (m_moving) {
             auto currentPos = getParent()->convertToNodeSpace(touch->getLocation());
@@ -156,8 +157,8 @@ struct ScrollTestLayer : public CCNode, public TouchDelegate {
         }
     }
 
-	virtual void clickEnded(TouchEvent* touch) override {
-        if (touch->getButton() != MouseButton::LEFT) return;
+	virtual void clickEnded(Touch* touch) override {
+        if (touch->getButton() != geode::MouseInputData::Button::Left) return;
         m_moving = false;
     }
 
@@ -286,7 +287,6 @@ struct ScrollTestLayer : public CCNode, public TouchDelegate {
 		m_scrollLayer->setHorizontalScroll(true);
         m_scrollLayer->setDraggingEnabled(false);
         m_scrollLayer->setAnchorPoint({0.f, 0.f});
-        m_scrollLayer->setTouchPriority(-500);
         
 		m_scrollLayer->setZOrder(100);
         m_scrollLayer->allowZoom(true);
@@ -302,7 +302,6 @@ struct ScrollTestLayer : public CCNode, public TouchDelegate {
         m_artNode->setAnchorPoint({0.5f, 0.5f});
         m_artNode->setID("art-node");
         m_artNode->setZOrder(1);
-        //m_artNode->setTouchPriority(-501);
 
         m_artShadow = geode::NineSlice::create("Shadow.png"_spr);
         m_artShadow->setScale(8);
@@ -350,8 +349,8 @@ struct ScrollTestLayer : public CCNode, public TouchDelegate {
 
         m_container->addChild(m_colorPicker);
 
-		m_verticalScrollBar = AdvancedScrollBar::create(m_scrollLayer, ScrollOrientation::VERTICAL);
-		m_horizontalScrollBar = AdvancedScrollBar::create(m_scrollLayer, ScrollOrientation::HORIZONTAL);
+		m_verticalScrollBar = AdvancedScrollBar::create(m_scrollLayer, ScrollOrientation::Vertical);
+		m_horizontalScrollBar = AdvancedScrollBar::create(m_scrollLayer, ScrollOrientation::Horizontal);
 
         ccColor4B arrowColor = {255, 255, 255, 255};
         ccColor4B arrowBGColor = {60, 60, 60, 255};

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Geode/cocos/cocoa/CCObject.h>
+#include <asp/fs/Path.hpp>
 #include <filesystem>
 
 #include "export.hpp"
@@ -22,7 +23,7 @@ public:
     unsigned int getHeight() const;
 
     /// Save image to file as PNG
-    geode::Result<> saveToFile(const std::filesystem::path& path);
+    geode::Result<> saveToFile(asp::fs::PathView path);
 
     /// Get image pixels
     std::span<cocos2d::ccColor4B> getPixels();

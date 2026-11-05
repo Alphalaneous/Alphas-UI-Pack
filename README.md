@@ -14,8 +14,6 @@ Provides a bunch of extra nodes and tools:
   - Scrolls the AdvancedScrollLayer
 ## RenderNode
   - Wraps a node and renders it to this as a sprite.
-## TouchBlocker
-  - Easily block touch based on another node's bounds.
 ## TouchDispatcher 
   - Brings proper hover controls as well as Right, Middle, Button 3, and Button 4 click support.
   - Supports normal touch prio, staying consistent with Geometry Dash.

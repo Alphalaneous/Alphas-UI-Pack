@@ -20,7 +20,7 @@ ArrowDirection ScrollArrowElement::getDirection() {
 }
 
 void ScrollArrowElement::handleScroll(float dt) {
-    if (m_impl->m_direction == ArrowDirection::UP) {
+    if (m_impl->m_direction == ArrowDirection::Up) {
         getScrollbar()->addToScroll(-20);
     }
     else {

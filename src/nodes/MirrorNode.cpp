@@ -3,6 +3,7 @@
 #include "API.hpp"
 #include "../CCTexture2DExt.hpp"
 #include "Image.hpp"
+#include "Utils.hpp"
 
 using namespace geode::prelude;
 using namespace alpha::prelude;
@@ -16,10 +17,9 @@ struct MirrorNode::Impl final {
     CCSize m_size;
     int m_texWidth = 0;
     int m_texHeight = 0;
-    int m_touchPriority = 0;
     bool m_showOriginal = true;
     bool m_ownsNode = false;
-    bool m_additionalTransformDirty;
+    bool m_additionalTransformDirty = false;
     cocos2d::CCAffineTransform m_additionalTransform = CCAffineTransformMakeIdentity();
     cocos2d::CCAffineTransform m_compoundTransform = CCAffineTransformMakeIdentity();
 };
@@ -243,15 +243,7 @@ void MirrorNode::onExit() {
 }
 
 void MirrorNode::registerWithTouchDispatcher() {
-    CCTouchDispatcher::get()->addTargetedDelegate(this, m_impl->m_touchPriority, true);
-}
-
-void MirrorNode::setTouchPriority(int priority) {
-    m_impl->m_touchPriority = priority;
-}
-
-int MirrorNode::getTouchPriority() {
-    return m_impl->m_touchPriority;
+    CCTouchDispatcher::get()->addTargetedDelegate(this, 0, true);
 }
 
 void MirrorNode::showOriginal(bool show) {
@@ -263,6 +255,8 @@ bool MirrorNode::showingOriginal() {
 }
 
 bool MirrorNode::ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
+    if (!alpha::utils::canTouch(this, touch->getLocation())) return false;
+
     bool ret = false;
 
     forwardTouch<CCTouchDelegate>([touch, event, &ret] (CCTouchDelegate* delegate) {
@@ -290,7 +284,7 @@ void MirrorNode::ccTouchCancelled(cocos2d::CCTouch* touch, cocos2d::CCEvent* eve
     });
 }
 
-bool MirrorNode::mouseEntered(dispatcher::TouchEvent* touch) {
+bool MirrorNode::mouseEntered(dispatcher::Hover* touch) {
     bool ret = false;
 
     forwardTouch<dispatcher::TouchDelegate>([touch, &ret] (dispatcher::TouchDelegate* delegate) {
@@ -300,13 +294,13 @@ bool MirrorNode::mouseEntered(dispatcher::TouchEvent* touch) {
     return ret;
 }
 
-void MirrorNode::mouseExited(dispatcher::TouchEvent* touch) {
+void MirrorNode::mouseExited(dispatcher::Hover* touch) {
     forwardTouch<dispatcher::TouchDelegate>([touch] (dispatcher::TouchDelegate* delegate) {
         delegate->mouseExited(touch);
     });
 }
 
-void MirrorNode::mouseMoved(dispatcher::TouchEvent* touch) {
+void MirrorNode::mouseMoved(dispatcher::Hover* touch) {
     forwardTouch<dispatcher::TouchDelegate>([touch] (dispatcher::TouchDelegate* delegate) {
         delegate->mouseMoved(touch);
     });

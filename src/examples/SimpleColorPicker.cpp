@@ -8,9 +8,9 @@ ccColor4B SimpleColorPicker::cc3Bto4B(ccColor3B color) {
     return {color.r, color.g, color.b, m_opacity};
 }
 
-SimpleColorPicker* SimpleColorPicker::create(const cocos2d::ccColor4B& color, std::function<void(const cocos2d::ccColor4B&)> callback){
+SimpleColorPicker* SimpleColorPicker::create(const cocos2d::ccColor4B& color, geode::Function<void(const cocos2d::ccColor4B&)> callback){
     auto ret = new SimpleColorPicker();
-    if (ret->init(color, callback)) {
+    if (ret->init(color, std::move(callback))) {
         ret->autorelease();
         return ret;
     }
@@ -19,7 +19,7 @@ SimpleColorPicker* SimpleColorPicker::create(const cocos2d::ccColor4B& color, st
     return nullptr;
 }
 
-bool SimpleColorPicker::init(const cocos2d::ccColor4B& color, std::function<void(const cocos2d::ccColor4B&)> callback) {
+bool SimpleColorPicker::init(const cocos2d::ccColor4B& color, geode::Function<void(const cocos2d::ccColor4B&)> callback) {
 
     m_callback = std::move(callback);
     m_opacity = color.a;
