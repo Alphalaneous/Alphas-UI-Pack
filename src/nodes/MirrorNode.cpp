@@ -2,8 +2,11 @@
 #include <Geode/Geode.hpp>
 #include "API.hpp"
 #include "../CCTexture2DExt.hpp"
+#include "Geode/platform/windows.hpp"
+#include "Geode/utils/Keyboard.hpp"
 #include "Image.hpp"
 #include "Utils.hpp"
+#include "touch/TouchDelegate.hpp"
 
 using namespace geode::prelude;
 using namespace alpha::prelude;
@@ -254,55 +257,75 @@ bool MirrorNode::showingOriginal() {
     return m_impl->m_showOriginal;
 }
 
-bool MirrorNode::ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
+bool MirrorNode::touchBegan(alpha::dispatcher::Touch* touch) {
     if (!alpha::utils::canTouch(this, touch->getLocation())) return false;
 
     bool ret = false;
 
-    forwardTouch<CCTouchDelegate>([touch, event, &ret] (CCTouchDelegate* delegate) {
-        ret = delegate->ccTouchBegan(touch, event);
+    forwardTouch<CCTouchDelegate>([touch, &ret] (CCTouchDelegate* delegate) {
+        if (auto adv = typeinfo_cast<TouchDelegate*>(delegate)) {
+            ret = adv->touchBegan(touch);
+        }
+        else if (touch->getButton() == geode::MouseInputData::Button::Left){
+            ret = delegate->ccTouchBegan(touch->getOriginalTouch(), nullptr);
+        }    
     });
 
     return ret;
 }
 
-void MirrorNode::ccTouchMoved(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
-    forwardTouch<CCTouchDelegate>([touch, event] (CCTouchDelegate* delegate) {
-        delegate->ccTouchMoved(touch, event);
+void MirrorNode::touchMoved(alpha::dispatcher::Touch* touch) {
+    forwardTouch<CCTouchDelegate>([touch] (CCTouchDelegate* delegate) {
+        if (auto adv = typeinfo_cast<TouchDelegate*>(delegate)) {
+            adv->touchMoved(touch);
+        }
+        else if (touch->getButton() == geode::MouseInputData::Button::Left){
+            delegate->ccTouchMoved(touch->getOriginalTouch(), nullptr);
+        }
     });
 }
 
-void MirrorNode::ccTouchEnded(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
-    forwardTouch<CCTouchDelegate>([touch, event] (CCTouchDelegate* delegate) {
-        delegate->ccTouchEnded(touch, event);
+void MirrorNode::touchEnded(alpha::dispatcher::Touch* touch) {
+    forwardTouch<CCTouchDelegate>([touch] (CCTouchDelegate* delegate) {
+        if (auto adv = typeinfo_cast<TouchDelegate*>(delegate)) {
+            adv->touchEnded(touch);
+        }
+        else if (touch->getButton() == geode::MouseInputData::Button::Left){
+            delegate->ccTouchEnded(touch->getOriginalTouch(), nullptr);
+        }    
     });
 }
 
-void MirrorNode::ccTouchCancelled(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
-    forwardTouch<CCTouchDelegate>([touch, event] (CCTouchDelegate* delegate) {
-        delegate->ccTouchCancelled(touch, event);
+void MirrorNode::touchCancelled(alpha::dispatcher::Touch* touch) {
+    forwardTouch<CCTouchDelegate>([touch] (CCTouchDelegate* delegate) {
+        if (auto adv = typeinfo_cast<TouchDelegate*>(delegate)) {
+            adv->touchCancelled(touch);
+        }
+        else if (touch->getButton() == geode::MouseInputData::Button::Left){
+            delegate->ccTouchCancelled(touch->getOriginalTouch(), nullptr);
+        }    
     });
 }
 
-bool MirrorNode::mouseEntered(dispatcher::Hover* touch) {
+bool MirrorNode::hoverEntered(dispatcher::Hover* touch) {
     bool ret = false;
 
     forwardTouch<dispatcher::TouchDelegate>([touch, &ret] (dispatcher::TouchDelegate* delegate) {
-        ret = delegate->mouseEntered(touch);
+        ret = delegate->hoverEntered(touch);
     });
 
     return ret;
 }
 
-void MirrorNode::mouseExited(dispatcher::Hover* touch) {
+void MirrorNode::hoverExited(dispatcher::Hover* touch) {
     forwardTouch<dispatcher::TouchDelegate>([touch] (dispatcher::TouchDelegate* delegate) {
-        delegate->mouseExited(touch);
+        delegate->hoverExited(touch);
     });
 }
 
-void MirrorNode::mouseMoved(dispatcher::Hover* touch) {
+void MirrorNode::hoverMoved(dispatcher::Hover* touch) {
     forwardTouch<dispatcher::TouchDelegate>([touch] (dispatcher::TouchDelegate* delegate) {
-        delegate->mouseMoved(touch);
+        delegate->hoverMoved(touch);
     });
 }
 

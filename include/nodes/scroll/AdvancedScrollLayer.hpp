@@ -7,7 +7,7 @@
 #include "ScrollContent.hpp"
 #include "../../export.hpp"
 #include "../../touch/TouchDelegate.hpp"
-#include "nodes/scroll/AdvancedScrollBar.hpp"
+#include "AdvancedScrollBar.hpp"
 
 namespace alpha::ui {
 
@@ -122,10 +122,6 @@ public:
     void setScrollDelta(float value);
     float getScrollDelta();
 
-    /// Allows clicks to pass through empty areas.
-    void allowEmptyClickThrough(bool allow);
-    bool allowsEmptyClickThrough();
-
     /// Scrollable bounds and scroll percentages.
     float getHorizontalMax();
     float getVerticalMax();
@@ -143,14 +139,12 @@ public:
 
     virtual void addChild(cocos2d::CCNode* child, int zOrder, int tag) override;
     virtual void removeChild(cocos2d::CCNode* child, bool cleanup) override;
-    virtual cocos2d::CCArray* getChildren() override;
-    virtual unsigned int getChildrenCount(void) const override;
     virtual void removeAllChildrenWithCleanup(bool cleanup) override;
 
-    virtual bool ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
-    virtual void ccTouchMoved(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
-    virtual void ccTouchEnded(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
-    virtual void ccTouchCancelled(cocos2d::CCTouch *touch, cocos2d::CCEvent* event) override;
+    virtual bool touchBegan(alpha::dispatcher::Touch* touch) override;
+    virtual void touchMoved(alpha::dispatcher::Touch* touch) override;
+    virtual void touchEnded(alpha::dispatcher::Touch* touch) override;
+    virtual void touchCancelled(alpha::dispatcher::Touch* touch) override;
 
     virtual bool scrollWheel(float y, float x) override;
 
@@ -166,11 +160,8 @@ private:
     /// Bounces scroll layer back when overshooting the bounds.
     void bounceBack(bool horizontal);
 
-    /// Recursively cancels touches for a node and its children.
-    void cancelTouchesRecursive(cocos2d::CCNode* node, cocos2d::CCTouch* touch, cocos2d::CCEvent* event);
-
     /// Cancels touches for all children of this scroll layer.
-    void cancelChildrenTouches(cocos2d::CCTouch* touch, cocos2d::CCEvent* event);
+    void cancelChildrenTouches(alpha::dispatcher::Touch* touch);
 
     /// Sets minimum container size based on content.
     void setMinContainerSize();
@@ -203,6 +194,7 @@ protected:
     bool init(const cocos2d::CCSize& size, CullingMethod cullingMethod);
 
     void updateScrollDecay(float dt);
+    bool isActive(const cocos2d::CCPoint& pos);
 
     void setVerticalScrollBar(AdvancedScrollBar* bar);
     void setHorizontalScrollBar(AdvancedScrollBar* bar);

@@ -1,6 +1,8 @@
 #include "nodes/scroll/AdvancedScrollLayer.hpp"
 #include <Geode/Geode.hpp>
 #include "API.hpp"
+#include "Geode/loader/Log.hpp"
+#include "Geode/utils/Keyboard.hpp"
 #include "Utils.hpp"
 #include "nodes/scroll/AdvancedScrollBar.hpp"
 //#include <geode.devtools/include/API.hpp>
@@ -35,7 +37,7 @@ struct AdvancedScrollLayer::Impl final {
     float m_minVelocity = 200.f;
 
     float m_minZoom = 0.5f;
-    float m_maxZoom = 5.0f;
+    float m_maxZoom = 5.f;
 
     float m_scrollDelta = 0.5f;
 
@@ -43,10 +45,11 @@ struct AdvancedScrollLayer::Impl final {
 
     bool m_cullingEnabled = true;
     bool m_draggingEnabled = true;
-    bool m_allowEmptyClickThrough = false;
     bool m_nextScrollSmoothX = false;
     bool m_nextScrollSmoothY = false;
     bool m_waitForBounce = false;
+
+    bool m_cancellingTouches = false;
 
     float m_scrollDecayX = 0.f;
     float m_scrollDecayY = 0.f;
@@ -63,7 +66,6 @@ struct AdvancedScrollLayer::Impl final {
     Ref<CCActionEase> m_smoothScrollToY;
     ScrollContent* m_content;
     CCNode* m_contentContainer;
-    CCNode* m_clickNode;
     CCPoint m_scrollPoint;
     CCPoint m_velocity;
     std::vector<PositionSample> m_samples;
@@ -103,9 +105,6 @@ void AdvancedScrollLayer::registerDevTools() {
 
         devtools::property("Should Cull", node->m_impl->m_cullingEnabled);
         devtools::property("Can Drag", node->m_impl->m_draggingEnabled);
-        if (devtools::property("Empty Click Through", node->m_impl->m_allowEmptyClickThrough)) {
-            node->allowEmptyClickThrough(node->m_impl->m_allowEmptyClickThrough);
-        }
 
         devtools::property("Can Zoom", node->m_impl->m_allowsZoom);
         if (node->m_impl->m_allowsZoom) {
@@ -159,7 +158,7 @@ bool AdvancedScrollLayer::init(const CCSize& size, CullingMethod cullingMethod) 
     
     m_impl->m_cullingMethod = std::move(cullingMethod);
 
-    setUserFlag("alk.better-touch-prio/steals-touch");
+    setUserFlag("geode.loader/steals-touch");
 
     setAnchorPoint({0.5f, 0.5f});
     ignoreAnchorPointForPosition(false);
@@ -180,8 +179,6 @@ bool AdvancedScrollLayer::init(const CCSize& size, CullingMethod cullingMethod) 
     m_impl->m_clippingNode->setID("clipped-content"_spr);
 
     CCNode::addChild(m_impl->m_clippingNode, 0, 0);
-
-    m_impl->m_clickNode = this;
 
     setContentSize(size);
     scheduleUpdate();
@@ -233,25 +230,13 @@ void AdvancedScrollLayer::onEnter() {
     }));
 
     m_impl->m_prevScrollPoint = CCPoint{FLT_MIN, FLT_MIN};
-    update(0);
+    update(0.f);
 }
 
 void AdvancedScrollLayer::onExit() {
     CCNode::onExit();
     CCTouchDispatcher::get()->removeDelegate(this);
     CCDirector::get()->getMouseDispatcher()->removeDelegate(this);
-}
-
-// We don't actually want AdvancedScrollLayer to have any "real" children for the sake of simplicity.
-// The tree would normally be m_clippingNode -> m_contentContainer -> m_content. 
-// This also prevents layouts from affecting it, and makes it easier to use getChildBy...
-CCArray* AdvancedScrollLayer::getChildren() {
-    return CCNode::getChildren();
-}
-
-// always 1, m_content is the only child with this setup
-unsigned int AdvancedScrollLayer::getChildrenCount() const {
-    return CCNode::getChildrenCount();
 }
 
 void AdvancedScrollLayer::addChild(CCNode* child, int zOrder, int tag) {
@@ -267,7 +252,6 @@ void AdvancedScrollLayer::removeAllChildrenWithCleanup(bool cleanup) {
 }
 
 void AdvancedScrollLayer::setMinContainerSize() {
-    CCSize size;
     if (m_impl->m_contentContainer->getScaledContentWidth() < getContentWidth()) {
         m_impl->m_contentContainer->setContentWidth(getContentWidth() / m_impl->m_contentContainer->getScale());
     }
@@ -306,33 +290,44 @@ void AdvancedScrollLayer::setKeyboardEnabled(bool value) {
     m_impl->m_keyboardEnabled = value;
 }
 
-void AdvancedScrollLayer::cancelTouchesRecursive(CCNode* node, CCTouch* touch, CCEvent* event) {
-    if (!node) return;
+void AdvancedScrollLayer::cancelChildrenTouches(alpha::dispatcher::Touch* touch) {
+    auto dispatcher = CCDirector::get()->m_pTouchDispatcher;
 
-    if (auto delegate = typeinfo_cast<CCTouchDelegate*>(node)) {
-        delegate->ccTouchCancelled(touch, event);
-    }
+    auto touches = CCSet::create();
+    touches->addObject(touch->getOriginalTouch());
 
-    for (auto child : node->getChildrenExt()) {
-        cancelTouchesRecursive(child, touch, event);
+    m_impl->m_cancellingTouches = true;
+    dispatcher->touchesCancelled(touches, nullptr);
+    m_impl->m_cancellingTouches = false;
+
+    if (auto handler = static_cast<CCTargetedTouchHandler*>(dispatcher->findHandler(this))) {
+        if (auto claimedTouches = handler->m_pClaimedTouches) {
+            if (!claimedTouches->containsObject(touch->getOriginalTouch())) {
+                claimedTouches->addObject(touch->getOriginalTouch());
+            }
+        }
     }
 }
 
-void AdvancedScrollLayer::cancelChildrenTouches(CCTouch* touch, CCEvent* event) {
-    cancelTouchesRecursive(m_impl->m_content, touch, event);
-}
-
-bool AdvancedScrollLayer::ccTouchBegan(CCTouch* touch, CCEvent* event) {
-    if (!alpha::utils::canTouch(this, touch->getLocation())) return false;
+bool AdvancedScrollLayer::isActive(const cocos2d::CCPoint& pos) {
     if (!nodeIsVisible(this)) return false;
+
+    if (!alpha::utils::canTouch(this, pos)) return false;
+    if (!alpha::utils::isPointInsideNode(this, pos)
+        && !alpha::utils::isPointInsideNode(m_impl->m_verticalScrollBar, pos)
+        && !alpha::utils::isPointInsideNode(m_impl->m_horizontalScrollBar, pos)
+    ) return false;
+
+    return true;
+}
+
+bool AdvancedScrollLayer::touchBegan(alpha::dispatcher::Touch* touch) {
+    if (!isActive(touch->getLocation())) return false;
+    if (touch->getButton() != geode::MouseInputData::Button::Left) return false;
     
     m_impl->m_prevTouchLocation = convertToNodeSpace(touch->getLocation());
-
-    if (!alpha::utils::isPointInsideNode(m_impl->m_clickNode, touch->getLocation())) {
-        return false;
-    }
-
     m_impl->m_inertiaActive = false;
+
     unschedule(schedule_selector(AdvancedScrollLayer::updateInertia));
 
     stopAction(m_impl->m_verticalBack);
@@ -354,26 +349,23 @@ bool AdvancedScrollLayer::ccTouchBegan(CCTouch* touch, CCEvent* event) {
     return true;
 }
 
-void AdvancedScrollLayer::ccTouchMoved(CCTouch* touch, CCEvent* event) {
-    if (!m_impl->m_draggingEnabled || !nodeIsVisible(this)) return;
+void AdvancedScrollLayer::touchMoved(alpha::dispatcher::Touch* touch) {
+    if (touch->getButton() != geode::MouseInputData::Button::Left) return;
 
-    auto touchLocation = touch->getLocation();
+    if (!m_impl->m_draggingEnabled) return;
 
-    CCPoint curr = convertToNodeSpace(touchLocation);
-    CCPoint delta = curr - m_impl->m_prevTouchLocation;
+    auto curr = convertToNodeSpace(touch->getLocation());
+    auto delta = curr - m_impl->m_prevTouchLocation;
 
     m_impl->m_prevTouchLocation = curr;
 
     if (!m_impl->m_dragging && delta.getLength() > m_impl->m_scrollDelta) {
         m_impl->m_dragging = true;
-        cancelChildrenTouches(touch, event);
-        touch->m_point = CCPoint{FLT_MIN, FLT_MIN};
+        cancelChildrenTouches(touch);
     }
 
     if (m_impl->m_dragging) {
-        touch->m_point = CCPoint{FLT_MIN, FLT_MIN};
-
-        CCPoint pos = m_impl->m_contentContainer->getPosition(); 
+        auto pos = m_impl->m_contentContainer->getPosition(); 
         if (m_impl->m_horizontalScroll) pos.x += delta.x; 
         if (m_impl->m_verticalScroll) pos.y += delta.y; 
 
@@ -387,7 +379,7 @@ void AdvancedScrollLayer::ccTouchMoved(CCTouch* touch, CCEvent* event) {
 
         m_impl->m_contentContainer->setPosition(pos);
 
-        m_impl->m_samples.push_back({touchLocation, alpha::utils::nowSeconds()});
+        m_impl->m_samples.push_back({touch->getLocation(), alpha::utils::nowSeconds()});
         if (m_impl->m_samples.size() > 3) {
             m_impl->m_samples.erase(m_impl->m_samples.begin());
         }
@@ -396,8 +388,8 @@ void AdvancedScrollLayer::ccTouchMoved(CCTouch* touch, CCEvent* event) {
     }
 }
 
-void AdvancedScrollLayer::ccTouchEnded(CCTouch* touch, CCEvent* event) {
-    if (!nodeIsVisible(this)) return;
+void AdvancedScrollLayer::touchEnded(alpha::dispatcher::Touch* touch) {
+    if (touch->getButton() != geode::MouseInputData::Button::Left) return;
 
     if (m_impl->m_dragging) {
         m_impl->m_dragging = false;
@@ -407,22 +399,26 @@ void AdvancedScrollLayer::ccTouchEnded(CCTouch* touch, CCEvent* event) {
             const Impl::PositionSample& last  = m_impl->m_samples.back();
 
             float dt = last.time - first.time;
-            if (dt > 0) {
-                CCPoint vel = (last.pos - first.pos) / dt;
+            if (dt > 0.f) {
+                auto vel = (last.pos - first.pos) / dt;
 
-                const float minSpeed = 400.0f;
+                constexpr float minSpeed = 400.f;
+
                 if (vel.getLength() < minSpeed) {
                     m_impl->m_velocity = CCPoint{0.f, 0.f};
-                } else {
-                    CCNode* parent = m_impl->m_content->getParent();
-                    CCPoint worldA = vel;
-                    CCPoint worldB = CCPoint{0.f, 0.f};
+                } 
+                else {
+                    auto parent = m_impl->m_content->getParent();
+                    auto worldA = vel;
+                    auto worldB = CCPoint{0.f, 0.f};
 
-                    CCPoint localA = parent->convertToNodeSpace(worldA) * parent->getScale();
-                    CCPoint localB = parent->convertToNodeSpace(worldB) * parent->getScale();
+                    auto localA = parent->convertToNodeSpace(worldA) * parent->getScale();
+                    auto localB = parent->convertToNodeSpace(worldB) * parent->getScale();
+
                     m_impl->m_velocity = localA - localB;
-                    if (!m_impl->m_horizontalScroll) m_impl->m_velocity.x = 0;
-                    if (!m_impl->m_verticalScroll) m_impl->m_velocity.y = 0;
+
+                    if (!m_impl->m_horizontalScroll) m_impl->m_velocity.x = 0.f;
+                    if (!m_impl->m_verticalScroll) m_impl->m_velocity.y = 0.f;
                 }
             }
         }
@@ -436,6 +432,18 @@ void AdvancedScrollLayer::ccTouchEnded(CCTouch* touch, CCEvent* event) {
     m_impl->m_samples.clear();
 }
 
+void AdvancedScrollLayer::touchCancelled(alpha::dispatcher::Touch* touch) {
+    if (touch->getButton() != geode::MouseInputData::Button::Left) return;
+    if (m_impl->m_cancellingTouches) return;
+
+    m_impl->m_holding = false;
+    m_impl->m_dragging = false;
+    m_impl->m_velocity = CCPoint{0.f, 0.f};
+    m_impl->m_samples.clear();
+
+    constrain();
+}
+
 void AdvancedScrollLayer::bounceBack(bool horizontal) {
     if (m_impl->m_dragging) return;
 
@@ -446,7 +454,7 @@ void AdvancedScrollLayer::bounceBack(bool horizontal) {
 
     if (horizontal) {
         float minX = getContentWidth() - m_impl->m_contentContainer->getScaledContentWidth();
-        float maxX = 0;
+        float maxX = 0.f;
         if (pos.x < minX) pos.x = minX;
         if (pos.x > maxX) pos.x = maxX;
 
@@ -469,13 +477,12 @@ void AdvancedScrollLayer::bounceBack(bool horizontal) {
 }
 
 void AdvancedScrollLayer::updateInertia(float dt) {
-
     bool shouldWait = false;
 
     bool verticalBackActive = m_impl->m_verticalBack && !m_impl->m_verticalBack->isDone();
     bool horizontalBackActive = m_impl->m_horizontalBack && !m_impl->m_horizontalBack->isDone();
 
-    if (m_impl->m_friction == 1 || m_impl->m_velocity.getLength() <= m_impl->m_minVelocity) {
+    if (m_impl->m_friction == 1.f || m_impl->m_velocity.getLength() <= m_impl->m_minVelocity) {
         m_impl->m_velocity = CCPoint{0.f, 0.f};
         if (!m_impl->m_waitForBounce) {
             shouldWait = true;
@@ -484,56 +491,63 @@ void AdvancedScrollLayer::updateInertia(float dt) {
         }
     }
     
-    CCPoint pos = m_impl->m_contentContainer->getPosition();
-    pos += m_impl->m_velocity * dt;
+    auto pos = m_impl->m_contentContainer->getPosition() +  m_impl->m_velocity * dt;
 
     if (m_impl->m_horizontalScroll) {
 
         float minX = getContentWidth() - m_impl->m_contentContainer->getScaledContentWidth();
-        float maxX = 0;
+        float maxX = 0.f;
 
-        m_impl->m_velocity.x *= std::pow(1 - m_impl->m_friction, dt / 0.2f);
+        m_impl->m_velocity.x *= std::pow(1.f - m_impl->m_friction, dt / 0.2f);
 
         pos.x = std::clamp(pos.x, minX - m_impl->m_overshoot, maxX + m_impl->m_overshoot);
 
         if (pos.x <= minX - m_impl->m_overshoot || pos.x >= maxX + m_impl->m_overshoot) {
-            m_impl->m_velocity.x = 0;
+            m_impl->m_velocity.x = 0.f;
             shouldWait = true;
             bounceBack(true);
         }
         else if (std::abs(m_impl->m_velocity.x) < m_impl->m_overshoot && (pos.x < minX || pos.x > maxX)) {
-            m_impl->m_velocity.x = 0;
+            m_impl->m_velocity.x = 0.f;
             if (pos.x < minX || pos.x > maxX) {
                 shouldWait = true;
                 bounceBack(true);
             }
         }
-        if (std::abs(m_impl->m_velocity.x) < 0.1f) m_impl->m_velocity.x = 0;
-        if (!horizontalBackActive) m_impl->m_contentContainer->setPositionX(pos.x);
+        if (std::abs(m_impl->m_velocity.x) < 0.1f) {
+            m_impl->m_velocity.x = 0.f;
+        }
+        if (!horizontalBackActive) {
+            m_impl->m_contentContainer->setPositionX(pos.x);
+        }
     }
 
     if (m_impl->m_verticalScroll) {
         float minY = getContentHeight();
         float maxY = m_impl->m_contentContainer->getScaledContentHeight();
 
-        m_impl->m_velocity.y *= std::pow(1 - m_impl->m_friction, dt / 0.2f);
+        m_impl->m_velocity.y *= std::pow(1.f - m_impl->m_friction, dt / 0.2f);
 
         pos.y = std::clamp(pos.y, minY - m_impl->m_overshoot, maxY + m_impl->m_overshoot);
 
         if (pos.y <= minY - m_impl->m_overshoot || pos.y >= maxY + m_impl->m_overshoot) {
-            m_impl->m_velocity.y = 0;
+            m_impl->m_velocity.y = 0.f;
             shouldWait = true;
             bounceBack(false);
         }
         else if (std::abs(m_impl->m_velocity.y) < m_impl->m_overshoot && (pos.y < minY || pos.y > maxY)) {
-            m_impl->m_velocity.y = 0;
+            m_impl->m_velocity.y = 0.f;
             if (pos.y < minY || pos.y > maxY) {
                 shouldWait = true;
                 bounceBack(false);
             }
         }
-        if (std::abs(m_impl->m_velocity.y) < 0.1f) m_impl->m_velocity.y = 0;
-        if (!verticalBackActive) m_impl->m_contentContainer->setPositionY(pos.y);
+        if (std::abs(m_impl->m_velocity.y) < 0.1f) {
+            m_impl->m_velocity.y = 0.f;
+        }
+        if (!verticalBackActive) {
+            m_impl->m_contentContainer->setPositionY(pos.y);
+        }
     }
     cull();
 
@@ -551,16 +565,7 @@ void AdvancedScrollLayer::updateInertia(float dt) {
     m_impl->m_waitForBounce = shouldWait;
 }
 
-void AdvancedScrollLayer::ccTouchCancelled(CCTouch* touch, CCEvent* pEvent) {
-    if (!nodeIsVisible(this)) return;
 
-    m_impl->m_holding = false;
-    m_impl->m_dragging = false;
-    m_impl->m_velocity = CCPoint{0.f, 0.f};
-    m_impl->m_samples.clear();
-
-    constrain();
-}
 
 void AdvancedScrollLayer::setScrollX(float x, bool smooth) {
     m_impl->m_scrollPoint.x = std::clamp(x, 0.f, getHorizontalMax());
@@ -569,7 +574,7 @@ void AdvancedScrollLayer::setScrollX(float x, bool smooth) {
         m_impl->m_smoothScrollToX = nullptr;
         m_impl->m_nextScrollSmoothX = true;
     }
-    update(0);
+    update(0.f);
 }
 
 void AdvancedScrollLayer::setScrollY(float y, bool smooth) {
@@ -580,24 +585,22 @@ void AdvancedScrollLayer::setScrollY(float y, bool smooth) {
         m_impl->m_smoothScrollToY = nullptr;
         m_impl->m_nextScrollSmoothY = true;
     }
-    update(0);
+    update(0.f);
 }
 
 void AdvancedScrollLayer::offsetScrollX(float x) {
-    offsetScroll(x, 0);
+    offsetScroll(x, 0.f);
 }
 
 void AdvancedScrollLayer::offsetScrollY(float y) {
-    offsetScroll(0, y);
+    offsetScroll(0.f, y);
 }
 
 void AdvancedScrollLayer::offsetScroll(float x, float y) {
-    if (!nodeIsVisible(this)) return;
-
     if (m_impl->m_verticalScroll) m_impl->m_scrollPoint.y += y;
     if (m_impl->m_horizontalScroll) m_impl->m_scrollPoint.x += x;
 
-    update(0);
+    update(0.f);
 }
 
 CCPoint AdvancedScrollLayer::getScrollPoint() {
@@ -632,8 +635,8 @@ void AdvancedScrollLayer::constrain(bool skipInertiaCheck) {
         m_impl->m_scrollPoint.x = maxX;
         outside = true;
     }
-    else if (m_impl->m_scrollPoint.x < 0) {
-        m_impl->m_scrollPoint.x = 0;
+    else if (m_impl->m_scrollPoint.x < 0.f) {
+        m_impl->m_scrollPoint.x = 0.f;
         outside = true;
     }
 
@@ -641,8 +644,8 @@ void AdvancedScrollLayer::constrain(bool skipInertiaCheck) {
         m_impl->m_scrollPoint.y = maxY;
         outside = true;
     }
-    else if (m_impl->m_scrollPoint.y < 0) {
-        m_impl->m_scrollPoint.y = 0;
+    else if (m_impl->m_scrollPoint.y < 0.f) {
+        m_impl->m_scrollPoint.y = 0.f;
         outside = true;
     }
 
@@ -735,18 +738,16 @@ void AdvancedScrollLayer::update(float dt) {
 }
 
 bool AdvancedScrollLayer::scrollWheel(float y, float x) {
-    if (!nodeIsVisible(this)) return false;
-    if (!alpha::utils::isPointInsideNode(this, getMousePos())
-        && !alpha::utils::isPointInsideNode(m_impl->m_verticalScrollBar, getMousePos())
-        && !alpha::utils::isPointInsideNode(m_impl->m_horizontalScrollBar, getMousePos())
-    ) return false;
+    if (!isActive(getMousePos())) return false;
 
-    if (m_impl->m_allowsZoom && !m_impl->m_dragging && (CCKeyboardDispatcher::get()->getControlKeyPressed() || CCKeyboardDispatcher::get()->getCommandKeyPressed())) {
+    auto kb = CCKeyboardDispatcher::get();
+
+    if (m_impl->m_allowsZoom && !m_impl->m_dragging && (kb->getControlKeyPressed() || kb->getCommandKeyPressed())) {
         zoom(-y);
         return true;
     }
 
-    if (CCKeyboardDispatcher::get()->getShiftKeyPressed()) {
+    if (kb->getShiftKeyPressed()) {
         std::swap(x, y);
     }
 
@@ -780,8 +781,12 @@ bool AdvancedScrollLayer::scrollWheel(float y, float x) {
             };
         }
         else {
-            if (m_impl->m_verticalScroll && m_impl->m_verticalScrollWheel) m_impl->m_scrollPoint.y += y;
-            if (m_impl->m_horizontalScroll && horizontalScrollWheel) m_impl->m_scrollPoint.x += x;
+            if (m_impl->m_verticalScroll && m_impl->m_verticalScrollWheel) {
+                m_impl->m_scrollPoint.y += y;
+            }
+            if (m_impl->m_horizontalScroll && horizontalScrollWheel) {
+                m_impl->m_scrollPoint.x += x;
+            }
 
             constrain(true);
         }
@@ -846,29 +851,29 @@ void AdvancedScrollLayer::updateScrollDecay(float dt) {
 
 Result<float> AdvancedScrollLayer::getHorizontalScroll(enumKeyCodes key) {
     auto kb = CCKeyboardDispatcher::get();
+
     auto shift = kb->getShiftKeyPressed();
     auto ctrl = kb->getControlKeyPressed() || kb->getCommandKeyPressed();
+
     auto x = m_impl->m_scrollPoint.x;
-    auto width = getContentWidth();
-    auto max = getHorizontalMax();
 
     if (ctrl && key == enumKeyCodes::KEY_Space) {
-        return Ok(shift ? x - (width - 30) : x + (width - 30));
+        return Ok(shift ? x - (getContentWidth() - 30.f) : x + (getContentWidth() - 30.f));
     }
 
     if (shift) {
         switch (key) {
             case enumKeyCodes::KEY_PageUp: {
-                return Ok(x - (width - 30));
+                return Ok(x - (getContentWidth() - 30.f));
             }
             case enumKeyCodes::KEY_PageDown: {
-                return Ok(x + (width - 30));
+                return Ok(x + (getContentWidth() - 30.f));
             }
             case enumKeyCodes::KEY_Home: {
-                return Ok(0);
+                return Ok(0.f);
             }
             case enumKeyCodes::KEY_End: {
-                return Ok(max);
+                return Ok(getHorizontalMax());
             }
             default: {
                 break;
@@ -878,10 +883,10 @@ Result<float> AdvancedScrollLayer::getHorizontalScroll(enumKeyCodes key) {
 
     switch (key) {
         case enumKeyCodes::KEY_Left: {
-            return Ok(ctrl ? 0 : x - 20);
+            return Ok(ctrl ? 0.f : x - 20.f);
         }
         case enumKeyCodes::KEY_Right: {
-            return Ok(ctrl ? max : x + 20);
+            return Ok(ctrl ? getHorizontalMax() : x + 20.f);
         }
         default: {
             break;
@@ -893,30 +898,32 @@ Result<float> AdvancedScrollLayer::getHorizontalScroll(enumKeyCodes key) {
 
 Result<float> AdvancedScrollLayer::getVerticalScroll(enumKeyCodes key, bool horizontal) {
     auto kb = CCKeyboardDispatcher::get();
+
     auto shift = kb->getShiftKeyPressed();
     auto ctrl = kb->getControlKeyPressed() || kb->getCommandKeyPressed();
+
     auto p = horizontal ? m_impl->m_scrollPoint.x : m_impl->m_scrollPoint.y;
     auto length = horizontal ? getContentWidth() : getContentHeight();
     auto max = horizontal ? getHorizontalMax() : getVerticalMax();
 
     switch (key) {
         case enumKeyCodes::KEY_Up: {
-            return Ok(ctrl ? 0 : p - 20);
+            return Ok(ctrl ? 0.f : p - 20.f);
         }
         case enumKeyCodes::KEY_Down: {
-            return Ok(ctrl ? max : p + 20);
+            return Ok(ctrl ? max : p + 20.f);
         }
         case enumKeyCodes::KEY_PageUp: {
-            return Ok(p - (length - 30));
+            return Ok(p - (length - 30.f));
         }
         case enumKeyCodes::KEY_PageDown: {
-            return Ok(p + (length - 30));
+            return Ok(p + (length - 30.f));
         }
         case enumKeyCodes::KEY_Space: {
-            return Ok(shift ? p - (length - 30) : p + (length - 30));
+            return Ok(shift ? p - (length - 30.f) : p + (length - 30.f));
         }
         case enumKeyCodes::KEY_Home: {
-            return Ok(0);
+            return Ok(0.f);
         }
         case enumKeyCodes::KEY_End: {
             return Ok(max);
@@ -932,11 +939,11 @@ void AdvancedScrollLayer::zoom(float zoomDelta) {
     m_impl->m_inertiaActive = false;
     unschedule(schedule_selector(AdvancedScrollLayer::updateInertia));
 
-    CCPoint worldPos = getMousePos();
+    auto worldPos = getMousePos();
 
-    float zoomFactor = powf(1.0045f, zoomDelta);
+    float zoomFactor = std::powf(1.0045f, zoomDelta);
 
-    CCPoint before = m_impl->m_contentContainer->convertToNodeSpace(worldPos);
+    auto before = m_impl->m_contentContainer->convertToNodeSpace(worldPos);
 
     float newScale = std::clamp(
         m_impl->m_contentContainer->getScale() * zoomFactor, 
@@ -946,15 +953,15 @@ void AdvancedScrollLayer::zoom(float zoomDelta) {
 
     m_impl->m_contentContainer->setScale(newScale);
 
-    CCPoint after = m_impl->m_contentContainer->convertToNodeSpace(worldPos);
-    CCPoint diff = after - before;
+    auto after = m_impl->m_contentContainer->convertToNodeSpace(worldPos);
+    auto diff = after - before;
 
     auto pos = m_impl->m_contentContainer->getPosition() + diff * m_impl->m_contentContainer->getScale();
 
     setScrollX(-pos.x);
     setScrollY(pos.y - getContentHeight());
 
-    update(0);
+    update(0.f);
 }
 
 float AdvancedScrollLayer::getHorizontalMax() {
@@ -1043,15 +1050,6 @@ void AdvancedScrollLayer::setMinVelocity(float value) {
 
 float AdvancedScrollLayer::getMinVelocity() {
     return m_impl->m_minVelocity;
-}
-
-void AdvancedScrollLayer::allowEmptyClickThrough(bool allow) {
-    m_impl->m_allowEmptyClickThrough = allow;
-    m_impl->m_clickNode = allow ? static_cast<CCNode*>(m_impl->m_content) : this;
-}
-
-bool AdvancedScrollLayer::allowsEmptyClickThrough() {
-    return m_impl->m_allowEmptyClickThrough;
 }
 
 void AdvancedScrollLayer::offsetStencilWidth(float width) {

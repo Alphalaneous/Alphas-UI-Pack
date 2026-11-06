@@ -44,7 +44,7 @@ struct WindowsClassicButton : public CCNodeRGBA, public TouchDelegate {
         return true;
     }
 
-    virtual bool clickBegan(Touch* touch) override { 
+    virtual bool touchBegan(Touch* touch) override { 
         if (!alpha::utils::isPointInsideNode(this, touch->getLocation())) return false;
         if (touch->getButton() != geode::MouseInputData::Button::Left) return true;
         m_background->setRotation(180);
@@ -55,7 +55,7 @@ struct WindowsClassicButton : public CCNodeRGBA, public TouchDelegate {
         return true; 
     }
 
-	virtual void clickMoved(Touch* touch) override {
+	virtual void touchMoved(Touch* touch) override {
         if (touch->getButton() != geode::MouseInputData::Button::Left) return;
         if (alpha::utils::isPointInsideNode(this, touch->getLocation())) {
             auto offset = CCPoint{0.5f, -0.5f};
@@ -68,7 +68,7 @@ struct WindowsClassicButton : public CCNodeRGBA, public TouchDelegate {
         }
     }
 
-	virtual void clickEnded(Touch* touch) override {
+	virtual void touchEnded(Touch* touch) override {
         if (!alpha::utils::isPointInsideNode(this, touch->getLocation())) return;
         if (touch->getButton() != geode::MouseInputData::Button::Left) return;
 
@@ -128,7 +128,7 @@ struct ScrollTestLayer : public CCNode, public TouchDelegate {
         return nullptr;
     }
 
-	virtual bool clickBegan(Touch* touch) override { 
+	virtual bool touchBegan(Touch* touch) override { 
         if (!alpha::utils::isPointInsideNode(this, touch->getLocation())) return false;
         if (touch->getButton() != geode::MouseInputData::Button::Left) return true;
         
@@ -146,7 +146,7 @@ struct ScrollTestLayer : public CCNode, public TouchDelegate {
         return true;
     }
 
-    virtual void clickMoved(Touch* touch) override {
+    virtual void touchMoved(Touch* touch) override {
         if (touch->getButton() != geode::MouseInputData::Button::Left) return;
 
         if (m_moving) {
@@ -157,7 +157,7 @@ struct ScrollTestLayer : public CCNode, public TouchDelegate {
         }
     }
 
-	virtual void clickEnded(Touch* touch) override {
+	virtual void touchEnded(Touch* touch) override {
         if (touch->getButton() != geode::MouseInputData::Button::Left) return;
         m_moving = false;
     }

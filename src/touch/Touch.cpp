@@ -1,11 +1,13 @@
 #include <Geode/Geode.hpp>
 #include "API.hpp"
+#include "Geode/cocos/CCDirector.h"
 
 using namespace geode::prelude;
 using namespace alpha::prelude;
 
 struct Touch::Impl final {
 	geode::MouseInputData::Button m_button;
+    Ref<CCTouch> m_touch = nullptr;
 };
 
 Touch::Touch() : m_impl(std::make_unique<Impl>()) {}
@@ -26,15 +28,14 @@ bool Touch::init(geode::MouseInputData::Button button) {
     return true;
 }
 
-geode::MouseInputData::Button Touch::getButton() {
-    return m_impl->m_button;
+void Touch::setOriginalTouch(CCTouch* touch) {
+    m_impl->m_touch = touch;
 }
 
-void Touch::setTouchInfo(const CCPoint& point) {
-    m_prevPoint = m_point;
-    m_point = CCPoint{point.x, point.y};
-    if (!m_startPointCaptured) {
-        m_startPoint = m_point;
-        m_startPointCaptured = true;
-    }
+CCTouch* Touch::getOriginalTouch() {
+    return m_impl->m_touch;
+}
+
+geode::MouseInputData::Button Touch::getButton() {
+    return m_impl->m_button;
 }

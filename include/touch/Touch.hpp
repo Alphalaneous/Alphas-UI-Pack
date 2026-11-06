@@ -2,6 +2,7 @@
 
 #include <Geode/cocos/touch_dispatcher/CCTouch.h>
 #include "TouchDispatcher.hpp"
+#include "TouchDelegate.hpp"
 
 #include "../export.hpp"
 
@@ -14,11 +15,14 @@ public:
 
 	static Touch* create(geode::MouseInputData::Button button);
 
-	void setTouchInfo(const cocos2d::CCPoint& point);
     geode::MouseInputData::Button getButton();
+    CCTouch* getOriginalTouch();
     
 protected:
 	bool init(geode::MouseInputData::Button button);
+    void setOriginalTouch(CCTouch* touch);
+
+    friend class TouchDelegate;
 
     struct Impl;
     std::unique_ptr<Impl> m_impl; 

@@ -10,14 +10,14 @@ namespace alpha::dispatcher {
 /// Extend this class to handle touch interactions
 class ALPHAS_UI_PACK_DLL TouchDelegate : public cocos2d::CCTouchDelegate {
 public:
-	virtual bool clickBegan(Touch* touch) { return false; }
-	virtual void clickMoved(Touch* touch) {}
-	virtual void clickEnded(Touch* touch) {}
-	virtual void clickCancelled(Touch* touch) {}
+	virtual bool touchBegan(Touch* touch) { return false; }
+	virtual void touchMoved(Touch* touch) {}
+	virtual void touchEnded(Touch* touch) {}
+	virtual void touchCancelled(Touch* touch) {}
 
-	virtual bool mouseEntered(Hover* hover) { return false; }
-	virtual void mouseExited(Hover* hover) {}
-	virtual void mouseMoved(Hover* hover) {}
+	virtual bool hoverEntered(Hover* hover) { return false; }
+	virtual void hoverExited(Hover* hover) {}
+	virtual void hoverMoved(Hover* hover) {}
 
     bool ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
     void ccTouchMoved(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;

@@ -32,13 +32,14 @@ public:
     void resetFBO();
 
     /// Touch overrides for forwarding.
-    bool ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
-    void ccTouchMoved(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
-    void ccTouchEnded(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
-    void ccTouchCancelled(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
-	bool mouseEntered(dispatcher::Hover* hover) override;
-	void mouseExited(dispatcher::Hover* hover) override;
-	void mouseMoved(dispatcher::Hover* hover) override;
+    bool touchBegan(alpha::dispatcher::Touch* touch) override;
+    void touchMoved(alpha::dispatcher::Touch* touch) override;
+    void touchEnded(alpha::dispatcher::Touch* touch) override;
+    void touchCancelled(alpha::dispatcher::Touch* touch) override;
+
+	bool hoverEntered(dispatcher::Hover* hover) override;
+	void hoverExited(dispatcher::Hover* hover) override;
+	void hoverMoved(dispatcher::Hover* hover) override;
 
     virtual void update(float dt) override;
     virtual void onEnter() override;

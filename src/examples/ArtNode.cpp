@@ -98,7 +98,7 @@ void ArtNode::addPoint(const CCPoint& p) {
     m_lastPoint = p;
 }
 
-bool ArtNode::clickBegan(Touch* touch) {
+bool ArtNode::touchBegan(Touch* touch) {
     if (!alpha::utils::canTouch(this, touch->getLocation())) return false;
     if (!alpha::utils::isPointInsideNode(this, touch->getLocation())) return false;
     m_holding = true;
@@ -125,27 +125,27 @@ bool ArtNode::clickBegan(Touch* touch) {
     return true;
 };
 
-void ArtNode::clickMoved(Touch* touch) {
+void ArtNode::touchMoved(Touch* touch) {
     if (touch->getButton() == MouseInputData::Button::Left) {
         addPoint(convertToNodeSpace(touch->getLocation()));
     }
 }
 
-void ArtNode::clickEnded(Touch* touch) {
+void ArtNode::touchEnded(Touch* touch) {
     m_holding = false;
     m_hasLastPoint = false;
 }
 
-bool ArtNode::mouseEntered(Hover* touch) { 
+bool ArtNode::hoverEntered(Hover* touch) { 
     //log::info("entered: {}", touch->getLocation());
     return true; 
 }
 
-void ArtNode::mouseExited(Hover* touch) {
+void ArtNode::hoverExited(Hover* touch) {
     //log::info("exited: {}", touch->getLocation());
 }
 
-void ArtNode::mouseMoved(Hover* touch) {
+void ArtNode::hoverMoved(Hover* touch) {
     //log::info("moved: {}", touch->getLocation());
 };
 

@@ -1,7 +1,5 @@
 #include <Geode/Geode.hpp>
 #include "API.hpp"
-#include "Geode/cocos/keypad_dispatcher/CCKeypadDispatcher.h"
-#include "Geode/cocos/robtop/keyboard_dispatcher/CCKeyboardDispatcher.h"
 #include "Geode/ui/Layout.hpp"
 #include "Geode/utils/cocos.hpp"
 #include "Utils.hpp"
@@ -295,11 +293,13 @@ void AdvancedScrollBar::addToScroll(float amount) {
     }
 }
 
-bool AdvancedScrollBar::ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
+bool AdvancedScrollBar::touchBegan(alpha::dispatcher::Touch* touch) {
+    if (touch->getButton() != geode::MouseInputData::Button::Left) return false;
+
     if (!alpha::utils::canTouch(this, touch->getLocation())) return false;
     if (!nodeIsVisible(this)) return false;
 
-    CCPoint local = convertToNodeSpace(touch->getLocation());
+    auto local = convertToNodeSpace(touch->getLocation());
 
     bool wasTouched = false;
 
@@ -337,39 +337,45 @@ bool AdvancedScrollBar::ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* 
     return wasTouched;
 }
 
-void AdvancedScrollBar::ccTouchMoved(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
+void AdvancedScrollBar::touchMoved(alpha::dispatcher::Touch* touch) {
+    if (touch->getButton() != geode::MouseInputData::Button::Left) return;
+
     if (!m_impl->m_dragging) return;
-    CCPoint local = convertToNodeSpace(touch->getLocation());
+    auto local = convertToNodeSpace(touch->getLocation());
 
     handleScroll(local.y - m_impl->m_touchOffset, false);
 }
 
-void AdvancedScrollBar::ccTouchEnded(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) {
-    CCPoint local = convertToNodeSpace(touch->getLocation());
+void AdvancedScrollBar::touchEnded(alpha::dispatcher::Touch* touch) {
+    if (touch->getButton() != geode::MouseInputData::Button::Left) return;
+
+    auto local = convertToNodeSpace(touch->getLocation());
     if (m_impl->m_touchedElement) m_impl->m_touchedElement->onReleaseInternal(local);
     m_impl->m_dragging = false;
 }
 
-void AdvancedScrollBar::ccTouchCancelled(cocos2d::CCTouch *touch, cocos2d::CCEvent* event) {
-    CCPoint local = convertToNodeSpace(touch->getLocation());
+void AdvancedScrollBar::touchCancelled(alpha::dispatcher::Touch* touch) {
+    if (touch->getButton() != geode::MouseInputData::Button::Left) return;
+
+    auto local = convertToNodeSpace(touch->getLocation());
     if (m_impl->m_touchedElement) m_impl->m_touchedElement->onReleaseInternal(local);
     m_impl->m_dragging = false;
 }
 
-bool AdvancedScrollBar::mouseEntered(Hover* touch) {
+bool AdvancedScrollBar::hoverEntered(Hover* hover) {
     if (!nodeIsVisible(this)) return false;
-    CCPoint local = convertToNodeSpace(touch->getLocation());
+    auto local = convertToNodeSpace(hover->getLocation());
 
-    if (alpha::utils::isPointInsideNode(m_impl->m_handle, touch->getLocation())) {
+    if (alpha::utils::isPointInsideNode(m_impl->m_handle, hover->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_handle;
     }
-    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isPointInsideNode(m_impl->m_upArrow, touch->getLocation())) {
+    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isPointInsideNode(m_impl->m_upArrow, hover->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_upArrow;
     }
-    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isPointInsideNode(m_impl->m_downArrow, touch->getLocation())) {
+    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isPointInsideNode(m_impl->m_downArrow, hover->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_downArrow;
     }
-    else if (alpha::utils::isPointInsideNode(m_impl->m_track, touch->getLocation())) {
+    else if (alpha::utils::isPointInsideNode(m_impl->m_track, hover->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_track;
     }
 
@@ -378,21 +384,21 @@ bool AdvancedScrollBar::mouseEntered(Hover* touch) {
     return true;
 }
 
-void AdvancedScrollBar::mouseMoved(Hover* touch) {
-    CCPoint local = convertToNodeSpace(touch->getLocation());
+void AdvancedScrollBar::hoverMoved(Hover* hover) {
+    auto local = convertToNodeSpace(hover->getLocation());
 
     auto currentHover = m_impl->m_hoveredElement;
 
-    if (alpha::utils::isPointInsideNode(m_impl->m_handle, touch->getLocation())) {
+    if (alpha::utils::isPointInsideNode(m_impl->m_handle, hover->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_handle;
     }
-    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isPointInsideNode(m_impl->m_upArrow, touch->getLocation())) {
+    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isPointInsideNode(m_impl->m_upArrow, hover->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_upArrow;
     }
-    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isPointInsideNode(m_impl->m_downArrow, touch->getLocation())) {
+    else if (m_impl->m_style.m_showArrowButtons && alpha::utils::isPointInsideNode(m_impl->m_downArrow, hover->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_downArrow;
     }
-    else if (alpha::utils::isPointInsideNode(m_impl->m_track, touch->getLocation())) {
+    else if (alpha::utils::isPointInsideNode(m_impl->m_track, hover->getLocation())) {
         m_impl->m_hoveredElement = m_impl->m_track;
     }
 
@@ -404,8 +410,8 @@ void AdvancedScrollBar::mouseMoved(Hover* touch) {
     if (m_impl->m_hoveredElement) m_impl->m_hoveredElement->onMouseMoveInternal(local);
 }
 
-void AdvancedScrollBar::mouseExited(Hover* touch) {
-    CCPoint local = convertToNodeSpace(touch->getLocation());
+void AdvancedScrollBar::hoverExited(Hover* hover) {
+    auto local = convertToNodeSpace(hover->getLocation());
     if (m_impl->m_hoveredElement) m_impl->m_hoveredElement->onMouseExitInternal(local);
 }
 

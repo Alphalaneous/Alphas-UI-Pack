@@ -16,7 +16,7 @@ enum class TouchType {
     ClickCancelled
 };
 
-class ALPHAS_UI_PACK_DLL TouchDispatcher : public cocos2d::CCObject {
+class ALPHAS_UI_PACK_DLL TouchDispatcher : public cocos2d::CCNode {
 public:
     TouchDispatcher();
     ~TouchDispatcher();
@@ -26,6 +26,7 @@ public:
 protected:
     void hovers(Hover* touch);
     void clicks(Touch* touch, TouchType type);
+    void checkHover(float dt);
     void cleanupHandlers();
     
     struct Impl;

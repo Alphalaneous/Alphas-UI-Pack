@@ -123,14 +123,14 @@ public:
     virtual void onEnter() override;
     virtual void onExit() override;
 
-    virtual bool ccTouchBegan(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
-    virtual void ccTouchMoved(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
-    virtual void ccTouchEnded(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
-    virtual void ccTouchCancelled(cocos2d::CCTouch* touch, cocos2d::CCEvent* event) override;
+    virtual bool touchBegan(alpha::dispatcher::Touch* touch) override;
+    virtual void touchMoved(alpha::dispatcher::Touch* touch) override;
+    virtual void touchEnded(alpha::dispatcher::Touch* touch) override;
+    virtual void touchCancelled(alpha::dispatcher::Touch* touch) override;
 
-    virtual bool mouseEntered(alpha::dispatcher::Hover* hover) override;
-    virtual void mouseMoved(alpha::dispatcher::Hover* hover) override;
-    virtual void mouseExited(alpha::dispatcher::Hover* hover) override;
+    virtual bool hoverEntered(alpha::dispatcher::Hover* hover) override;
+    virtual void hoverMoved(alpha::dispatcher::Hover* hover) override;
+    virtual void hoverExited(alpha::dispatcher::Hover* hover) override;
 
     virtual bool scrollWheel(float y, float x) override;
 

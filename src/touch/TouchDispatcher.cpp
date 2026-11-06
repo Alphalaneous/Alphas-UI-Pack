@@ -1,9 +1,12 @@
 #include "touch/TouchDispatcher.hpp"
 #include <Geode/Geode.hpp>
 #include "API.hpp"
+#include "Geode/cocos/CCDirector.h"
+#include "Geode/cocos/cocoa/CCObject.h"
 #include "Geode/cocos/robtop/touch_dispatcher/CCTouchClipper.h"
 #include "Geode/cocos/touch_dispatcher/CCTouchDelegateProtocol.h"
 #include "Geode/loader/Log.hpp"
+#include "Geode/utils/cocos.hpp"
 #include "Utils.hpp"
 #include "touch/Hover.hpp"
 #include "touch/TouchDelegate.hpp"
@@ -21,7 +24,6 @@ struct TouchDispatcher::Impl final {
 	Ref<Hover> m_hoverTouch;
 
     ListenerHandle m_touchListener;
-    ListenerHandle m_moveListener;
 };
 
 TouchDispatcher::TouchDispatcher() : m_impl(std::make_unique<Impl>()) {
@@ -52,12 +54,13 @@ TouchDispatcher::TouchDispatcher() : m_impl(std::make_unique<Impl>()) {
             default: break;
         }
 
+        auto winSize = CCDirector::get()->getWinSize();
         auto pos = getMousePos();
         for (const auto& [button, state] : m_impl->m_inputStates) {
             if (state != origStates[button]) {
                 if (state) {
                     auto click = Touch::create(button);
-                    click->setTouchInfo(pos);
+                    click->setTouchInfo(0, pos.x, winSize.height - pos.y);
                     m_impl->m_clicks[button] = click;
                     clicks(click, TouchType::ClickBegan);
                 }
@@ -70,7 +73,7 @@ TouchDispatcher::TouchDispatcher() : m_impl(std::make_unique<Impl>()) {
         
         if (m_impl->m_lastPos != pos) {
             for (const auto& [button, click] : m_impl->m_clicks) {
-                click->setTouchInfo(pos);
+                click->setTouchInfo(0, pos.x, winSize.height - pos.y);
                 clicks(click, TouchType::ClickMoved);
             }
         }
@@ -78,18 +81,24 @@ TouchDispatcher::TouchDispatcher() : m_impl(std::make_unique<Impl>()) {
         m_impl->m_lastPos = pos;
     });
 
-    m_impl->m_moveListener = MouseMoveEvent().listen([this] (int32_t x, int32_t y) {
-        if (m_impl->m_dispatcher->m_bDispatchEvents) {
-            m_impl->m_hoverTouch->setTouchInfo(getMousePos());
-            hovers(m_impl->m_hoverTouch);
-        }
-    });
+    schedule(schedule_selector(TouchDispatcher::checkHover));
+    onEnter();
 }
+
 TouchDispatcher::~TouchDispatcher() = default;
 
 TouchDispatcher* TouchDispatcher::get() {
     static TouchDispatcher instance;
     return &instance;
+}
+
+void TouchDispatcher::checkHover(float dt) {
+    if (m_impl->m_dispatcher->m_bDispatchEvents) {
+        auto winSize = CCDirector::get()->getWinSize();
+        auto pos = getMousePos();
+        m_impl->m_hoverTouch->setTouchInfo(0, pos.x, winSize.height - pos.y);
+        hovers(m_impl->m_hoverTouch);
+    }
 }
 
 // yoinked from ZOrderTouchPrio.cpp in Geode, modified to support all mouse buttons
@@ -140,7 +149,7 @@ namespace {
         }
 
         bool isStealer(CCNode* node) const {
-            if (node->getUserFlag("steals-touch"_spr)) return true;
+            if (node->getUserFlag("geode.loader/steals-touch")) return true;
 
             if (typeinfo_cast<TableView*>(node)) return true;
             if (typeinfo_cast<BoomScrollLayer*>(node)) return true;
@@ -259,7 +268,7 @@ namespace {
             
             bool claimed = false;
             if (touchType == alpha::dispatcher::TouchType::ClickBegan) {
-                claimed = delegate->clickBegan(touch);
+                claimed = delegate->touchBegan(touch);
 
                 if (claimed) {
                     claimedTouches->addObject(touch);
@@ -270,14 +279,14 @@ namespace {
 
                 switch (touchType) {
                     case alpha::dispatcher::TouchType::ClickMoved: 
-                        delegate->clickMoved(touch); 
+                        delegate->touchMoved(touch); 
                         break;
                     case alpha::dispatcher::TouchType::ClickEnded:
-                        delegate->clickEnded(touch);
+                        delegate->touchEnded(touch);
                         claimedTouches->removeObject(touch);
                         break;
                     case alpha::dispatcher::TouchType::ClickCancelled:
-                        delegate->clickCancelled(touch);
+                        delegate->touchCancelled(touch);
                         claimedTouches->removeObject(touch);
                         break;
                     default:
@@ -323,18 +332,18 @@ namespace {
             bool isClaimed = claimedTouches->containsObject(hover) && nodeIsVisible(node);
 
             if (inside && !isClaimed) {
-                isClaimed = touchDelegate->mouseEntered(hover);
+                isClaimed = touchDelegate->hoverEntered(hover);
                 if (isClaimed) {
                     claimedTouches->addObject(hover);
                 }
             }
             if (isClaimed && !entered) {
-                touchDelegate->mouseExited(hover);
+                touchDelegate->hoverExited(hover);
                 claimedTouches->removeObject(hover);
             }
 
             if (entered && isClaimed) {
-                touchDelegate->mouseMoved(hover);
+                touchDelegate->hoverMoved(hover);
             }
 
             if (isClaimed && swallowsTouches) {
