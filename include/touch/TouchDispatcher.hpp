@@ -26,7 +26,7 @@ public:
 protected:
     void hovers(Hover* touch);
     void clicks(Touch* touch, TouchType type);
-    void checkHover(float dt);
+    void checkTouch(float dt);
     void cleanupHandlers();
     
     struct Impl;

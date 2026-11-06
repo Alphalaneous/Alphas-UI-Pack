@@ -70,18 +70,9 @@ TouchDispatcher::TouchDispatcher() : m_impl(std::make_unique<Impl>()) {
                 }
             }
         }
-        
-        if (m_impl->m_lastPos != pos) {
-            for (const auto& [button, click] : m_impl->m_clicks) {
-                click->setTouchInfo(0, pos.x, winSize.height - pos.y);
-                clicks(click, TouchType::ClickMoved);
-            }
-        }
-
-        m_impl->m_lastPos = pos;
     });
 
-    schedule(schedule_selector(TouchDispatcher::checkHover));
+    schedule(schedule_selector(TouchDispatcher::checkTouch));
     onEnter();
 }
 
@@ -92,13 +83,25 @@ TouchDispatcher* TouchDispatcher::get() {
     return &instance;
 }
 
-void TouchDispatcher::checkHover(float dt) {
+void TouchDispatcher::checkTouch(float dt) {
     if (m_impl->m_dispatcher->m_bDispatchEvents) {
         auto winSize = CCDirector::get()->getWinSize();
         auto pos = getMousePos();
         m_impl->m_hoverTouch->setTouchInfo(0, pos.x, winSize.height - pos.y);
         hovers(m_impl->m_hoverTouch);
     }
+
+    auto winSize = CCDirector::get()->getWinSize();
+    auto pos = getMousePos();
+    
+    if (m_impl->m_lastPos != pos) {
+        for (const auto& [button, click] : m_impl->m_clicks) {
+            click->setTouchInfo(0, pos.x, winSize.height - pos.y);
+            clicks(click, TouchType::ClickMoved);
+        }
+    }
+
+    m_impl->m_lastPos = pos;
 }
 
 // yoinked from ZOrderTouchPrio.cpp in Geode, modified to support all mouse buttons
