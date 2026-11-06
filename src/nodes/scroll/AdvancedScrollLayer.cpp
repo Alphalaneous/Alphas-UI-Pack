@@ -1,8 +1,6 @@
 #include "nodes/scroll/AdvancedScrollLayer.hpp"
 #include <Geode/Geode.hpp>
 #include "API.hpp"
-#include "Geode/loader/Log.hpp"
-#include "Geode/utils/Keyboard.hpp"
 #include "Utils.hpp"
 #include "nodes/scroll/AdvancedScrollBar.hpp"
 //#include <geode.devtools/include/API.hpp>
@@ -185,6 +183,8 @@ bool AdvancedScrollLayer::init(const CCSize& size, CullingMethod cullingMethod) 
 
     addEventListener(KeyboardInputEvent(), [this] (KeyboardInputData& data) {
         if (!m_impl->m_keyboardEnabled) return;
+        if (CCIMEDispatcher::sharedDispatcher()->hasDelegate()) return;
+        if (!isActive(getMousePos())) return;
         
         if (data.action == KeyboardInputData::Action::Press || data.action == KeyboardInputData::Action::Repeat) {
             if (m_impl->m_horizontalScroll && m_impl->m_swapScrollDirection && !m_impl->m_verticalScroll) {
