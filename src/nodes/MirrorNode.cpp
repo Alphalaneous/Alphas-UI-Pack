@@ -2,7 +2,6 @@
 #include <Geode/Geode.hpp>
 #include "API.hpp"
 #include "../CCTexture2DExt.hpp"
-#include "Geode/platform/windows.hpp"
 #include "Geode/utils/Keyboard.hpp"
 #include "Image.hpp"
 #include "Utils.hpp"
