@@ -196,6 +196,8 @@ protected:
     void updateScrollDecay(float dt);
     bool isActive(const cocos2d::CCPoint& pos);
 
+    float getDistance(const cocos2d::CCPoint& start, const cocos2d::CCPoint& end);
+
     void setVerticalScrollBar(AdvancedScrollBar* bar);
     void setHorizontalScrollBar(AdvancedScrollBar* bar);
 

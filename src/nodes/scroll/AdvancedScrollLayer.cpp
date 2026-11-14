@@ -37,7 +37,7 @@ struct AdvancedScrollLayer::Impl final {
     float m_minZoom = 0.5f;
     float m_maxZoom = 5.f;
 
-    float m_scrollDelta = 0.5f;
+    float m_scrollDelta = 15.f;
 
     bool m_keyboardEnabled = true;
 
@@ -56,6 +56,8 @@ struct AdvancedScrollLayer::Impl final {
     bool m_usesSmoothScroll = true;
 
     CCPoint m_prevTouchLocation;
+    CCPoint m_startTouchLocation;
+
     CCPoint m_prevScrollPoint {FLT_MIN, FLT_MIN};
 
     Ref<CCActionEase> m_verticalBack;
@@ -326,6 +328,7 @@ bool AdvancedScrollLayer::touchBegan(alpha::dispatcher::Touch* touch) {
     if (touch->getButton() != geode::MouseInputData::Button::Left) return false;
     
     m_impl->m_prevTouchLocation = convertToNodeSpace(touch->getLocation());
+    m_impl->m_startTouchLocation = m_impl->m_prevTouchLocation;
     m_impl->m_inertiaActive = false;
 
     unschedule(schedule_selector(AdvancedScrollLayer::updateInertia));
@@ -349,6 +352,19 @@ bool AdvancedScrollLayer::touchBegan(alpha::dispatcher::Touch* touch) {
     return true;
 }
 
+float AdvancedScrollLayer::getDistance(const cocos2d::CCPoint& start, const cocos2d::CCPoint& end) {
+    if (m_impl->m_verticalScroll && m_impl->m_horizontalScroll) {
+        return start.getDistance(end);
+    }
+    if (m_impl->m_verticalScroll) {
+        return std::abs(end.y - start.y);
+    }
+    if (m_impl->m_horizontalScroll) {
+        return std::abs(end.x - start.x);
+    }
+    return 0.f;
+}
+
 void AdvancedScrollLayer::touchMoved(alpha::dispatcher::Touch* touch) {
     if (touch->getButton() != geode::MouseInputData::Button::Left) return;
 
@@ -359,7 +375,7 @@ void AdvancedScrollLayer::touchMoved(alpha::dispatcher::Touch* touch) {
 
     m_impl->m_prevTouchLocation = curr;
 
-    if (!m_impl->m_dragging && delta.getLength() > m_impl->m_scrollDelta) {
+    if (!m_impl->m_dragging && getDistance(curr, m_impl->m_startTouchLocation) > m_impl->m_scrollDelta) {
         m_impl->m_dragging = true;
         cancelChildrenTouches(touch);
     }
