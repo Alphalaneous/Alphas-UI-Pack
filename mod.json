@@ -1,5 +1,5 @@
 {
-    "geode": "6.0.0-alpha.1",
+    "geode": "6.0.0-alpha.3",
     "gd": {
         "win": "2.2091",
         "android": "2.2091",
@@ -8,7 +8,7 @@
     },
     "id": "alphalaneous.alphas-ui-pack",
     "name": "Alpha's UI Pack",
-    "version": "v1.5.0",
+    "version": "v1.5.0-beta.1",
     "developer": "Alphalaneous",
     "description": "Provides an APIs for new UI elements and tools",
     "early-load": true,
@@ -34,8 +34,7 @@
     },
     "links": {
         "homepage": "https://linktr.ee/Alphalaneous",
-        "source": "https://github.com/Alphalaneous/Alphas-UI-Pack",
-        "community": "https://discord.gg/Txn2CA5dHF"
+        "source": "https://github.com/Alphalaneous/Alphas-UI-Pack"
     },
     "tags": [
         "developer", "enhancement", "interface", "api"
