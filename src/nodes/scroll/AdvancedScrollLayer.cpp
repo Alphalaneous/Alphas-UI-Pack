@@ -806,8 +806,9 @@ bool AdvancedScrollLayer::scrollWheel(float y, float x) {
 
             constrain(true);
         }
+        return true;
     }
-    return true;
+    return false;
 }
 
 void AdvancedScrollLayer::updateScrollDecay(float dt) {
