@@ -1,12 +1,6 @@
 #include "touch/TouchDispatcher.hpp"
 #include <Geode/Geode.hpp>
 #include "API.hpp"
-#include "Geode/cocos/CCDirector.h"
-#include "Geode/cocos/cocoa/CCObject.h"
-#include "Geode/cocos/robtop/touch_dispatcher/CCTouchClipper.h"
-#include "Geode/cocos/touch_dispatcher/CCTouchDelegateProtocol.h"
-#include "Geode/loader/Log.hpp"
-#include "Geode/utils/cocos.hpp"
 #include "Utils.hpp"
 #include "touch/Hover.hpp"
 #include "touch/TouchDelegate.hpp"
@@ -326,7 +320,19 @@ namespace {
             auto touchDelegate = typeinfo_cast<TouchDelegate*>(delegate);
             if (!touchDelegate) {
                 if (swallowsTouches && inside) {
-                    hoverClaimed = true;
+                    auto editorWindow = typeinfo_cast<EditorWindowPopup*>(node);
+                    if (!editorWindow) {
+                        editorWindow = node->getParentByType<EditorWindowPopup>();
+                    }
+                    if (editorWindow) {
+                        auto inside = alpha::utils::isPointInsideNode(editorWindow->m_background, hover->getLocation()) && alpha::utils::canTouch(editorWindow->m_background, hover->getLocation());
+                        if (inside) {
+                            hoverClaimed = true;
+                        }
+                    }
+                    else {
+                        hoverClaimed = true;
+                    }
                 }
                 continue;
             }

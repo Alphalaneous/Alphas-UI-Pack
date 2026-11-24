@@ -1,3 +1,6 @@
+# 1.5.0-beta.2
+- Fix hover in the editor
+
 # 1.5.0-beta.1
 - 2.2091 Support
 
